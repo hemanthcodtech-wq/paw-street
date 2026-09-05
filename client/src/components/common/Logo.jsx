@@ -4,9 +4,9 @@ import { Link } from 'react-router-dom';
 export default function Logo({ size = 'md', showText = true, className = '', to = '/' }) {
   const imgSizeClasses = {
     sm: 'h-6 sm:h-7 max-w-[120px]',
-    md: 'h-7 sm:h-8 max-w-[140px] sm:max-w-[160px]',
-    lg: 'h-7.5 sm:h-8.5 md:h-9 max-w-[150px] sm:max-w-[180px]',
-    xl: 'h-10 sm:h-12 max-w-[220px]'
+    md: 'h-8 sm:h-8.5 max-w-[155px] sm:max-w-[170px]',
+    lg: 'h-9 sm:h-9.5 md:h-10 max-w-[180px] sm:max-w-[200px]',
+    xl: 'h-11 sm:h-13 max-w-[240px]'
   };
 
   const content = (

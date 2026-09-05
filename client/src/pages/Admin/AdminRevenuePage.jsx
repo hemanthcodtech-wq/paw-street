@@ -1,0 +1,382 @@
+import React, { useState } from 'react';
+import { 
+  DollarSign, 
+  TrendingUp, 
+  Percent, 
+  Truck, 
+  ShieldCheck, 
+  CreditCard, 
+  CheckCircle2, 
+  Sliders, 
+  Sparkles, 
+  Clock, 
+  ArrowUpRight,
+  Info,
+  Check,
+  Building2,
+  Lock
+} from 'lucide-react';
+import { useAdmin } from '../../context/AdminContext';
+
+export default function AdminRevenuePage() {
+  const { 
+    businessSettings, 
+    revenueMetrics, 
+    updateCategoryCommission, 
+    updateDeliveryPricing, 
+    updateOnboardingFees,
+    payoutQueue,
+    processPayout
+  } = useAdmin();
+
+  const [savedToast, setSavedToast] = useState(false);
+
+  const showSaveSuccess = () => {
+    setSavedToast(true);
+    setTimeout(() => setSavedToast(false), 2500);
+  };
+
+  return (
+    <div className="space-y-6">
+      
+      {/* Toast Notification */}
+      {savedToast && (
+        <div className="fixed top-20 right-4 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-2xl shadow-xl border border-slate-700 text-xs font-bold flex items-center gap-2 animate-in slide-in-from-top-4 duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <span>Business pricing settings updated live across all apps!</span>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="bg-emerald-100 text-emerald-900 border border-emerald-300/80 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              Revenue & Commission Controls
+            </span>
+          </div>
+          <h1 className="font-heading font-black text-xl sm:text-2xl text-slate-900 tracking-tight">
+            Revenue & Pricing Controls
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500">
+            Configure category commission rates, delivery fee parameters, vendor registration fees and payout queues.
+          </p>
+        </div>
+      </div>
+
+      {/* Financial Health Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-gradient-to-br from-amber-500 to-amber-600 text-slate-950 p-5 rounded-3xl shadow-md space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-amber-950">Total Net Platform Profit</span>
+            <DollarSign className="w-5 h-5 text-slate-950" />
+          </div>
+          <p className="text-2xl sm:text-3xl font-black">
+            ₹{revenueMetrics.totalNetPlatformProfit.toLocaleString('en-IN')}
+          </p>
+          <p className="text-[11px] text-amber-950 font-semibold">
+            Platform commissions & onboarding tech fees collected
+          </p>
+        </div>
+
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500">Total Disbursed to Vendors</span>
+            <span className="p-1.5 bg-slate-100 text-slate-700 rounded-xl">
+              <CreditCard className="w-4 h-4" />
+            </span>
+          </div>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900">
+            ₹{revenueMetrics.totalVendorPayoutsDisbursed.toLocaleString('en-IN')}
+          </p>
+          <p className="text-[11px] text-slate-400">
+            Reconciled via automated bank settlement transfers
+          </p>
+        </div>
+
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500">Pending Settlement Queue</span>
+            <span className="p-1.5 bg-amber-50 text-amber-600 rounded-xl">
+              <Clock className="w-4 h-4" />
+            </span>
+          </div>
+          <p className="text-2xl sm:text-3xl font-black text-amber-600">
+            ₹{revenueMetrics.pendingPayoutsQueue.toLocaleString('en-IN')}
+          </p>
+          <p className="text-[11px] text-slate-400">
+            Scheduled for this week's settlement cycle
+          </p>
+        </div>
+      </div>
+
+      {/* Main Pricing Controls Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* 1. Category Commission Configuration */}
+        <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
+                <Percent className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="font-heading font-black text-sm sm:text-base text-slate-900">
+                  Category Commission Percentages
+                </h3>
+                <p className="text-[10px] sm:text-[11px] text-slate-400">
+                  Global take-rate deducted automatically upon order completion
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-1">
+            {Object.entries(businessSettings.categoryCommissions).map(([cat, rate]) => (
+              <div key={cat} className="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-800">{cat}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-black text-amber-700 text-sm">{rate}%</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="40"
+                      value={rate}
+                      onChange={(e) => {
+                        updateCategoryCommission(cat, e.target.value);
+                        showSaveSuccess();
+                      }}
+                      className="w-14 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-center font-bold"
+                    />
+                  </div>
+                </div>
+                <input
+                  type="range"
+                  min="5"
+                  max="30"
+                  step="1"
+                  value={rate}
+                  onChange={(e) => {
+                    updateCategoryCommission(cat, e.target.value);
+                    showSaveSuccess();
+                  }}
+                  className="w-full accent-amber-500"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 2. Delivery Fee & Surcharge Pricing Rules */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+                <Truck className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="font-heading font-black text-sm sm:text-base text-slate-900">
+                  Customer Delivery Fee Controls
+                </h3>
+                <p className="text-[10px] sm:text-[11px] text-slate-400">
+                  Real-time dispatch and distance pricing parameters
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3.5 pt-1 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Base Delivery Fee (₹)
+                  </label>
+                  <input
+                    type="number"
+                    value={businessSettings.deliveryPricing.baseDeliveryFee}
+                    onChange={(e) => {
+                      updateDeliveryPricing('baseDeliveryFee', e.target.value);
+                      showSaveSuccess();
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">Default fee for first 5km</span>
+                </div>
+
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Free Delivery Threshold (₹)
+                  </label>
+                  <input
+                    type="number"
+                    value={businessSettings.deliveryPricing.freeDeliveryThreshold}
+                    onChange={(e) => {
+                      updateDeliveryPricing('freeDeliveryThreshold', e.target.value);
+                      showSaveSuccess();
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">Orders above this get free delivery</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Per-Km Surcharge (₹)
+                  </label>
+                  <input
+                    type="number"
+                    value={businessSettings.deliveryPricing.perKmRate}
+                    onChange={(e) => {
+                      updateDeliveryPricing('perKmRate', e.target.value);
+                      showSaveSuccess();
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">Added per km beyond 5km radius</span>
+                </div>
+
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Rain Surge Multiplier
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={businessSettings.deliveryPricing.rainSurgeMultiplier}
+                    onChange={(e) => {
+                      updateDeliveryPricing('rainSurgeMultiplier', e.target.value);
+                      showSaveSuccess();
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">Surge applied during heavy rains</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Vendor Onboarding Fee Settings */}
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="font-heading font-black text-sm sm:text-base text-slate-900">
+                  Vendor Onboarding & Platform Fees
+                </h3>
+                <p className="text-[10px] sm:text-[11px] text-slate-400">
+                  Section 4.1 store registration deposits and annual renewals
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <label className="block font-bold text-slate-700 mb-1">
+                  Registration Deposit (₹)
+                </label>
+                <input
+                  type="number"
+                  value={businessSettings.onboardingFees.vendorRegistrationDeposit}
+                  onChange={(e) => {
+                    updateOnboardingFees('vendorRegistrationDeposit', e.target.value);
+                    showSaveSuccess();
+                  }}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold"
+                />
+              </div>
+
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <label className="block font-bold text-slate-700 mb-1">
+                  Annual Platform Tech Fee (₹)
+                </label>
+                <input
+                  type="number"
+                  value={businessSettings.onboardingFees.annualPlatformTechFee}
+                  onChange={(e) => {
+                    updateOnboardingFees('annualPlatformTechFee', e.target.value);
+                    showSaveSuccess();
+                  }}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold"
+                />
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* Vendor Payout Reconciliation Queue */}
+      <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="font-heading font-black text-base text-slate-900">
+              Vendor Settlement & Payout Reconciliation Queue
+            </h3>
+            <p className="text-xs text-slate-500">
+              Bi-weekly net earnings disbursed directly to vendor verified bank accounts.
+            </p>
+          </div>
+          <span className="text-xs font-bold bg-amber-100 text-amber-900 px-3 py-1 rounded-xl shrink-0 self-start sm:self-center">
+            {payoutQueue.filter(p => p.status === 'pending').length} Settlements Pending
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 text-slate-400 text-[11px] font-bold">
+                <th className="py-2.5 px-3">PAYOUT ID</th>
+                <th className="py-2.5 px-3">STORE / VENDOR</th>
+                <th className="py-2.5 px-3">BILLING PERIOD</th>
+                <th className="py-2.5 px-3">ORDERS</th>
+                <th className="py-2.5 px-3">NET AMOUNT</th>
+                <th className="py-2.5 px-3">BANK ACCOUNT</th>
+                <th className="py-2.5 px-3">STATUS</th>
+                <th className="py-2.5 px-3 text-right">ACTION</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {payoutQueue.map((po) => (
+                <tr key={po.id} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="py-3 px-3 font-mono font-bold text-slate-900">{po.id}</td>
+                  <td className="py-3 px-3 font-bold text-slate-800">{po.vendorName}</td>
+                  <td className="py-3 px-3 text-slate-600">{po.period}</td>
+                  <td className="py-3 px-3 font-semibold text-slate-700">{po.ordersCount} orders</td>
+                  <td className="py-3 px-3 font-black text-emerald-600">₹{po.amount.toLocaleString('en-IN')}</td>
+                  <td className="py-3 px-3 font-mono text-slate-500 text-[11px]">{po.bankAccount}</td>
+                  <td className="py-3 px-3">
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                      po.status === 'processed'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-amber-100 text-amber-900'
+                    }`}>
+                      {po.status === 'processed' ? 'Settled' : 'Pending'}
+                    </span>
+                  </td>
+                  <td className="py-3 px-3 text-right">
+                    {po.status === 'pending' ? (
+                      <button
+                        onClick={() => processPayout(po.id)}
+                        className="px-3 py-1 bg-[#FFB703] hover:bg-[#E5A015] text-slate-950 font-black rounded-lg text-xs shadow-2xs transition-all active:scale-95"
+                      >
+                        Disburse
+                      </button>
+                    ) : (
+                      <span className="text-slate-400 text-[11px] font-semibold">✓ Complete</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  );
+}

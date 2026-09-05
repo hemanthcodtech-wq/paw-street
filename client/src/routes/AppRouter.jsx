@@ -26,6 +26,24 @@ import VendorOrdersPage from '../pages/Vendor/VendorOrdersPage';
 import VendorDeliveryTeamPage from '../pages/Vendor/VendorDeliveryTeamPage';
 import VendorStoreProfilePage from '../pages/Vendor/VendorStoreProfilePage';
 
+// Admin Module Pages & Layout (Section 3)
+import AdminLayout from '../components/admin/AdminLayout';
+import AdminLoginPage from '../pages/Admin/AdminLoginPage';
+import AdminDashboardPage from '../pages/Admin/AdminDashboardPage';
+import AdminVendorsPage from '../pages/Admin/AdminVendorsPage';
+import AdminProductsPage from '../pages/Admin/AdminProductsPage';
+import AdminRevenuePage from '../pages/Admin/AdminRevenuePage';
+import AdminPlatformPage from '../pages/Admin/AdminPlatformPage';
+import AdminSupportPage from '../pages/Admin/AdminSupportPage';
+
+// Delivery Module Pages & Layout (Section 5)
+import DeliveryLayout from '../components/delivery/DeliveryLayout';
+import DeliveryLoginPage from '../pages/Delivery/DeliveryLoginPage';
+import DeliveryDashboardPage from '../pages/Delivery/DeliveryDashboardPage';
+import DeliveryLiveMapPage from '../pages/Delivery/DeliveryLiveMapPage';
+import DeliveryCodPage from '../pages/Delivery/DeliveryCodPage';
+import DeliveryEarningsPage from '../pages/Delivery/DeliveryEarningsPage';
+
 export default function AppRouter() {
   const location = useLocation();
 
@@ -81,6 +99,24 @@ export default function AppRouter() {
       <Route path="/vendor/orders" element={<VendorLayout><VendorOrdersPage /></VendorLayout>} />
       <Route path="/vendor/delivery-team" element={<VendorLayout><VendorDeliveryTeamPage /></VendorLayout>} />
       <Route path="/vendor/store-profile" element={<VendorLayout><VendorStoreProfilePage /></VendorLayout>} />
+
+      {/* 3. Admin Module Routes */}
+      <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route path="/admin" element={<AdminLayout><AdminDashboardPage /></AdminLayout>} />
+      <Route path="/admin/dashboard" element={<AdminLayout><AdminDashboardPage /></AdminLayout>} />
+      <Route path="/admin/vendors" element={<AdminLayout><AdminVendorsPage /></AdminLayout>} />
+      <Route path="/admin/products" element={<AdminLayout><AdminProductsPage /></AdminLayout>} />
+      <Route path="/admin/revenue" element={<AdminLayout><AdminRevenuePage /></AdminLayout>} />
+      <Route path="/admin/platform" element={<AdminLayout><AdminPlatformPage /></AdminLayout>} />
+      <Route path="/admin/support" element={<AdminLayout><AdminSupportPage /></AdminLayout>} />
+
+      {/* 5. Delivery Partner Module Routes */}
+      <Route path="/delivery/login" element={<DeliveryLoginPage />} />
+      <Route path="/delivery" element={<DeliveryLayout><DeliveryDashboardPage /></DeliveryLayout>} />
+      <Route path="/delivery/dashboard" element={<DeliveryLayout><DeliveryDashboardPage /></DeliveryLayout>} />
+      <Route path="/delivery/navigation" element={<DeliveryLayout><DeliveryLiveMapPage /></DeliveryLayout>} />
+      <Route path="/delivery/cod" element={<DeliveryLayout><DeliveryCodPage /></DeliveryLayout>} />
+      <Route path="/delivery/earnings" element={<DeliveryLayout><DeliveryEarningsPage /></DeliveryLayout>} />
 
       {/* Fallback Route */}
       <Route path="*" element={<Navigate to="/" replace />} />

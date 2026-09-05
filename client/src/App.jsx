@@ -7,6 +7,8 @@ import { LocationProvider } from './context/LocationContext';
 import { CartProvider, useCart } from './context/CartContext';
 import { OrderProvider } from './context/OrderContext';
 import { VendorProvider } from './context/VendorContext';
+import { AdminProvider } from './context/AdminContext';
+import { DeliveryProvider } from './context/DeliveryContext';
 
 // Common Layout Components
 import Header from './components/common/Header';
@@ -37,17 +39,35 @@ function GlobalToast() {
 function AppContent() {
   const location = useLocation();
   const isVendorRoute = location.pathname.startsWith('/vendor');
+  const isAdminRoute = location.pathname.startsWith('/admin');
+  const isDeliveryRoute = location.pathname.startsWith('/delivery');
 
   if (isVendorRoute) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-amber-500 selection:text-white">
+      <div className="min-h-screen bg-[#FAF7F2] text-slate-900 font-sans selection:bg-[#FFB703] selection:text-slate-950">
+        <AppRouter />
+      </div>
+    );
+  }
+
+  if (isAdminRoute) {
+    return (
+      <div className="min-h-screen bg-[#FAF7F2] text-slate-900 font-sans selection:bg-[#FFB703] selection:text-slate-950">
+        <AppRouter />
+      </div>
+    );
+  }
+
+  if (isDeliveryRoute) {
+    return (
+      <div className="min-h-screen bg-[#FAF7F2] text-slate-900 font-sans selection:bg-[#FFB703] selection:text-slate-950">
         <AppRouter />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FDFBF7] text-slate-800 font-sans selection:bg-amber-500 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-[#FAF7F2] text-slate-800 font-sans selection:bg-[#FFB703] selection:text-slate-950">
       {/* Global Top Navigation */}
       <Header />
 
@@ -89,7 +109,11 @@ export default function App() {
           <CartProvider>
             <OrderProvider>
               <VendorProvider>
-                <AppContent />
+                <AdminProvider>
+                  <DeliveryProvider>
+                    <AppContent />
+                  </DeliveryProvider>
+                </AdminProvider>
               </VendorProvider>
             </OrderProvider>
           </CartProvider>

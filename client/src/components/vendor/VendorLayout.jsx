@@ -127,20 +127,20 @@ export default function VendorLayout({ children }) {
 
       {/* Main Vendor Header / Navbar */}
       <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/90 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
           
           {/* Left: Mobile Drawer Trigger & Logo Branding */}
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-1.5 rounded-xl text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors shrink-0"
+              className="lg:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors shrink-0 active:scale-95"
               aria-label="Toggle Navigation"
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {mobileMenuOpen ? <X className="w-5.5 h-5.5" /> : <Menu className="w-5.5 h-5.5" />}
             </button>
 
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <Logo to="/vendor/dashboard" size="md" className="shrink-0" />
+              <Logo to="/vendor/dashboard" size="lg" className="shrink-0" />
               
               {/* Partner Label & Store Name (Optimized for all viewports) */}
               <div className="hidden sm:flex items-center gap-2 border-l border-slate-200 pl-3 min-w-0">

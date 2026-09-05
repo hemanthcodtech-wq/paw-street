@@ -112,6 +112,7 @@ export default function Footer() {
             <h5 className="font-heading font-bold text-white text-sm mb-3">Partner & Support</h5>
             <ul className="space-y-2 text-xs text-slate-400">
               <li><Link to="/vendor/login" className="text-amber-400 font-bold hover:text-amber-300 transition-colors">🏪 Vendor Store Portal</Link></li>
+              <li><Link to="/admin/login" className="text-indigo-400 font-bold hover:text-indigo-300 transition-colors">👑 Admin Control Portal</Link></li>
               <li><Link to="/vendor/onboarding" className="hover:text-amber-400 transition-colors">Apply for Store Onboarding</Link></li>
               <li><Link to="/support" className="hover:text-amber-400 transition-colors">Help Center & Chatbot</Link></li>
               <li><Link to="/support?tab=returns" className="hover:text-amber-400 transition-colors">Returns & Refunds</Link></li>
