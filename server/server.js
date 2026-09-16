@@ -44,6 +44,24 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
+// Ignore browser favicon requests
+app.get(['/favicon.ico', '/favicon.png'], (req, res) => res.status(204).end());
+
+// Root Information Endpoint
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'PAW NEAR API Engine is running 🚀',
+    status: 'ONLINE',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      products: '/api/products',
+      auth: '/api/auth'
+    }
+  });
+});
+
 // Health Check Endpoint
 app.get('/api/health', (req, res) => {
   res.json({
@@ -60,6 +78,16 @@ app.get('/api/health', (req, res) => {
       googleAuth: 'Enabled'
     }
   });
+});
+
+// Middleware to ensure DB is connected before executing any API route in serverless
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+  } catch (err) {
+    console.error('DB connect middleware error:', err.message);
+  }
+  next();
 });
 
 // Mount Application Routes
