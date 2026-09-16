@@ -110,14 +110,26 @@ const getAuthenticatedVendor = async (req) => {
   if (!req.user) return null;
   const userEmail = (req.user.email || '').trim().toLowerCase();
 
-  const vendor = await Vendor.findOne({
-    $or: [
-      { user: req.user._id },
-      { email: userEmail }
-    ]
-  });
+  let vendor = null;
+  const userOr = [];
+  if (req.user._id && isMongoObjectId(req.user._id)) {
+    userOr.push({ user: req.user._id });
+  }
+  if (userEmail) {
+    userOr.push({ email: userEmail });
+  }
 
-  if (vendor && !vendor.user && req.user._id) {
+  if (userOr.length > 0) {
+    try {
+      vendor = await Vendor.findOne({ $or: userOr });
+    } catch (e) {}
+  }
+
+  if (!vendor && req.user.role === 'admin') {
+    vendor = await Vendor.findOne({ status: 'approved' }) || await Vendor.findOne();
+  }
+
+  if (vendor && !vendor.user && req.user._id && /^[a-f\d]{24}$/i.test(req.user._id)) {
     vendor.user = req.user._id;
     await vendor.save().catch(() => {});
   }
@@ -243,7 +255,7 @@ router.put('/profile', protect, authorizeRoles('vendor', 'admin'), async (req, r
 
 // @route   PUT /api/vendors/toggle-open
 // @desc    Toggle open/closed status for current vendor
-router.put('/toggle-open', protect, authorizeRoles('vendor'), async (req, res) => {
+router.put('/toggle-open', protect, authorizeRoles('vendor', 'admin'), async (req, res) => {
   try {
     const vendor = await getAuthenticatedVendor(req);
     if (!vendor) {
@@ -265,7 +277,7 @@ router.put('/toggle-open', protect, authorizeRoles('vendor'), async (req, res) =
 
 // @route   GET /api/vendors/dashboard-stats
 // @desc    Get real-time KPI metrics isolated to current vendor
-router.get('/dashboard-stats', protect, authorizeRoles('vendor'), async (req, res) => {
+router.get('/dashboard-stats', protect, authorizeRoles('vendor', 'admin'), async (req, res) => {
   try {
     const vendor = await getAuthenticatedVendor(req);
     if (!vendor) {
@@ -313,7 +325,7 @@ router.get('/dashboard-stats', protect, authorizeRoles('vendor'), async (req, re
 
 // @route   GET /api/vendors/products
 // @desc    Get all products and services belonging ONLY to this vendor
-router.get('/products', protect, authorizeRoles('vendor'), async (req, res) => {
+router.get('/products', protect, authorizeRoles('vendor', 'admin'), async (req, res) => {
   try {
     const vendor = await getAuthenticatedVendor(req);
     if (!vendor) {
@@ -361,7 +373,7 @@ router.get('/products', protect, authorizeRoles('vendor'), async (req, res) => {
 
 // @route   POST /api/vendors/products
 // @desc    Create a product or service attached strictly to this vendor
-router.post('/products', protect, authorizeRoles('vendor'), async (req, res) => {
+router.post('/products', protect, authorizeRoles('vendor', 'admin'), async (req, res) => {
   try {
     const vendor = await getAuthenticatedVendor(req);
     if (!vendor) {
@@ -430,7 +442,7 @@ router.post('/products', protect, authorizeRoles('vendor'), async (req, res) => 
 
 // @route   PUT /api/vendors/products/:id
 // @desc    Update product strictly checking ownership
-router.put('/products/:id', protect, authorizeRoles('vendor'), async (req, res) => {
+router.put('/products/:id', protect, authorizeRoles('vendor', 'admin'), async (req, res) => {
   try {
     const vendor = await getAuthenticatedVendor(req);
     if (!vendor) {
@@ -475,7 +487,7 @@ router.put('/products/:id', protect, authorizeRoles('vendor'), async (req, res) 
 
 // @route   DELETE /api/vendors/products/:id
 // @desc    Delete product strictly checking ownership
-router.delete('/products/:id', protect, authorizeRoles('vendor'), async (req, res) => {
+router.delete('/products/:id', protect, authorizeRoles('vendor', 'admin'), async (req, res) => {
   try {
     const vendor = await getAuthenticatedVendor(req);
     if (!vendor) {
@@ -605,7 +617,7 @@ router.get('/orders', protect, authorizeRoles('vendor', 'admin'), async (req, re
 
 // @route   PUT /api/vendors/orders/:id/status
 // @desc    Update status of an order belonging to this vendor
-router.put('/orders/:id/status', protect, authorizeRoles('vendor'), async (req, res) => {
+router.put('/orders/:id/status', protect, authorizeRoles('vendor', 'admin'), async (req, res) => {
   try {
     const vendor = await getAuthenticatedVendor(req);
     if (!vendor) {
@@ -687,7 +699,7 @@ router.put('/orders/:id/status', protect, authorizeRoles('vendor'), async (req, 
 
 // @route   PUT /api/vendors/orders/:id/assign
 // @desc    Assign delivery partner from this vendor's team
-router.put('/orders/:id/assign', protect, authorizeRoles('vendor'), async (req, res) => {
+router.put('/orders/:id/assign', protect, authorizeRoles('vendor', 'admin'), async (req, res) => {
   try {
     const vendor = await getAuthenticatedVendor(req);
     if (!vendor) {
@@ -757,7 +769,7 @@ router.put('/orders/:id/assign', protect, authorizeRoles('vendor'), async (req, 
 
 // @route   GET /api/vendors/delivery-team
 // @desc    Get delivery team fleet belonging ONLY to this store
-router.get('/delivery-team', protect, authorizeRoles('vendor'), async (req, res) => {
+router.get('/delivery-team', protect, authorizeRoles('vendor', 'admin'), async (req, res) => {
   try {
     const vendor = await getAuthenticatedVendor(req);
     if (!vendor) {
@@ -793,7 +805,7 @@ router.get('/delivery-team', protect, authorizeRoles('vendor'), async (req, res)
 
 // @route   POST /api/vendors/delivery-team
 // @desc    Add a rider to THIS vendor's fleet
-router.post('/delivery-team', protect, authorizeRoles('vendor'), async (req, res) => {
+router.post('/delivery-team', protect, authorizeRoles('vendor', 'admin'), async (req, res) => {
   try {
     const vendor = await getAuthenticatedVendor(req);
     if (!vendor) {
@@ -846,7 +858,7 @@ router.post('/delivery-team', protect, authorizeRoles('vendor'), async (req, res
 
 // @route   PUT /api/vendors/delivery-team/:id
 // @desc    Update status/details of a rider in THIS vendor's fleet
-router.put('/delivery-team/:id', protect, authorizeRoles('vendor'), async (req, res) => {
+router.put('/delivery-team/:id', protect, authorizeRoles('vendor', 'admin'), async (req, res) => {
   try {
     const vendor = await getAuthenticatedVendor(req);
     if (!vendor) {
@@ -880,7 +892,7 @@ router.put('/delivery-team/:id', protect, authorizeRoles('vendor'), async (req, 
 
 // @route   DELETE /api/vendors/delivery-team/:id
 // @desc    Remove a rider from THIS vendor's fleet
-router.delete('/delivery-team/:id', protect, authorizeRoles('vendor'), async (req, res) => {
+router.delete('/delivery-team/:id', protect, authorizeRoles('vendor', 'admin'), async (req, res) => {
   try {
     const vendor = await getAuthenticatedVendor(req);
     if (!vendor) {

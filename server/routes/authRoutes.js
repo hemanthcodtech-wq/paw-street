@@ -322,13 +322,16 @@ router.post('/google', async (req, res) => {
 // @desc    Get currently logged in user profile
 router.get('/me', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    let user = null;
+    if (req.user && req.user._id && /^[a-f\d]{24}$/i.test(req.user._id)) {
+      user = await User.findById(req.user._id).select('-password');
+    }
     if (!user) {
       return res.json({ success: true, user: req.user });
     }
     res.json({ success: true, user });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.json({ success: true, user: req.user });
   }
 });
 
@@ -469,11 +472,6 @@ router.post('/logout', (req, res) => {
     success: true,
     message: 'Logged out successfully.'
   });
-});
-// @route   GET /api/auth/me
-// @desc    Get current user profile
-router.get('/me', protect, (req, res) => {
-  res.json({ success: true, marker: 'LATEST_CODE', user: req.user });
 });
 
 module.exports = router;

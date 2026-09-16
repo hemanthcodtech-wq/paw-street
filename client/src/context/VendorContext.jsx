@@ -534,13 +534,24 @@ export function VendorProvider({ children }) {
 
   // Data Fetching from Backend (Strictly Scoped to Authenticated Vendor via JWT)
   const fetchVendorData = React.useCallback(async () => {
-    const token = localStorage.getItem('paw_vendor_token') || localStorage.getItem('paw_token');
+    const vendorToken = localStorage.getItem('paw_vendor_token');
+    let userRole = null;
+    try {
+      userRole = JSON.parse(localStorage.getItem('paw_user') || '{}')?.role;
+    } catch (e) {}
+
+    // Only attempt vendor sync if vendor token exists or user is logged in as vendor/admin
+    const token = vendorToken || (['vendor', 'admin'].includes(userRole) ? localStorage.getItem('paw_token') : null);
     if (!token) return;
 
     setIsLoading(true);
     try {
       // 1. Fetch Vendor Profile
       const profileRes = await api.getVendorProfile();
+      if (!profileRes?.success && profileRes?.message?.includes('Forbidden')) {
+        return; // Non-vendor account, exit early
+      }
+
       if (profileRes?.success && profileRes.vendor) {
         const v = profileRes.vendor;
         setVendor(prev => ({ ...prev, ...v, id: v._id || v.id }));
