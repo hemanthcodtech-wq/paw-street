@@ -1,48 +1,49 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { PRODUCTS } from '../data/products';
+import { api } from '../services/api';
 
 const VendorContext = createContext();
 
 const INITIAL_VENDOR = {
-  id: 'vendor-101',
-  fullName: 'Rajesh Sharma',
-  email: 'rajesh.paws@gmail.com',
-  phone: '+91 98765 43210',
-  storeName: 'Paws & Whiskers Supermart & Pet Clinic',
-  businessTypes: ['Pet Store & Retail', 'Pet Grooming & Spa', 'Veterinary Clinic & Hospital'],
-  businessType: 'Pet Store, Grooming & Veterinary Clinic',
-  storeCategory: 'Pet Food, Accessories, Grooming & Healthcare',
-  storeLicenceNumber: 'DL-PET-2024-88492',
-  gstin: '36AABCP1234F1Z8',
-  panNumber: 'ABCPS1234D',
-  aadhaarNumber: 'XXXX-XXXX-8921',
+  id: '',
+  fullName: '',
+  email: '',
+  phone: '',
+  storeName: '',
+  businessTypes: [],
+  businessType: '',
+  storeCategory: '',
+  storeLicenceNumber: '',
+  gstin: '',
+  panNumber: '',
+  aadhaarNumber: '',
   serviceDeliveryModes: {
-    homeServiceEnabled: true,
-    clinicVisitEnabled: true,
-    homeServiceFee: 99,
-    homeServiceRadiusKm: 8,
-    homeGroomingSlots: ['09:30 AM', '11:30 AM', '02:30 PM', '04:30 PM'],
-    clinicDoctorSlots: ['10:00 AM', '12:00 PM', '03:00 PM', '05:00 PM', '06:30 PM']
+    homeServiceEnabled: false,
+    clinicVisitEnabled: false,
+    homeServiceFee: 0,
+    homeServiceRadiusKm: 0,
+    homeGroomingSlots: [],
+    clinicDoctorSlots: []
   },
   location: {
-    address: 'Plot 42, Road No. 12, Banjara Hills, Hyderabad, Telangana',
-    city: 'Hyderabad',
-    pincode: '500034',
+    address: '',
+    city: '',
+    pincode: '',
     lat: 17.4156,
     lng: 78.4350,
-    landmark: 'Opposite Care Hospital'
+    landmark: ''
   },
   photos: {
-    storeFront: '/images/promo_banner_main.jpg',
-    interior: '/images/promo_puppy.jpg',
-    logo: '/images/store_vet.jpg'
+    storeFront: '',
+    interior: '',
+    logo: ''
   },
-  status: 'approved', // 'pending' | 'approved' | 'rejected'
-  submittedAt: '2026-09-01T10:30:00Z',
-  approvedAt: '2026-09-02T14:15:00Z',
-  isStoreOpen: true,
-  rating: 4.8,
-  totalReviews: 650,
+  status: 'pending',
+  submittedAt: null,
+  approvedAt: null,
+  isStoreOpen: false,
+  rating: 0,
+  totalReviews: 0,
   commissionRate: 8 // %
 };
 
@@ -505,258 +506,411 @@ export function VendorProvider({ children }) {
     return saved ? JSON.parse(saved) : INITIAL_VENDOR;
   });
 
-  // Store products (mapped with isActive property)
+  // Store products (isolated per vendor)
   const [products, setProducts] = useState(() => {
     const saved = localStorage.getItem('paw_vendor_products');
-    if (saved) return JSON.parse(saved);
-    return PRODUCTS.slice(0, 14).map((p, idx) => ({
-      ...p,
-      isActive: true,
-      stockCount: p.stockCount || (idx % 3 === 0 ? 8 : 24),
-      inStock: p.inStock !== undefined ? p.inStock : true,
-      dailySales: Math.floor(Math.random() * 15) + 3
-    }));
+    return saved ? JSON.parse(saved) : [];
   });
 
-  // Delivery team
+  // Delivery team (isolated per vendor)
   const [deliveryBoys, setDeliveryBoys] = useState(() => {
     const saved = localStorage.getItem('paw_vendor_delivery_boys');
-    return saved ? JSON.parse(saved) : INITIAL_DELIVERY_BOYS;
+    return saved ? JSON.parse(saved) : [];
   });
 
-  // Live Orders
+  // Live Orders (isolated per vendor)
   const [orders, setOrders] = useState(() => {
     const saved = localStorage.getItem('paw_vendor_orders');
-    return saved ? JSON.parse(saved) : INITIAL_ORDERS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   // Services Catalog (Home Services & In-Clinic Visits)
   const [services, setServices] = useState(() => {
     const saved = localStorage.getItem('paw_vendor_services');
-    return saved ? JSON.parse(saved) : INITIAL_SERVICES;
+    return saved ? JSON.parse(saved) : [];
   });
 
-  // Sync to localStorage
-  useEffect(() => {
-    localStorage.setItem('paw_vendor_profile', JSON.stringify(vendor));
-  }, [vendor]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Data Fetching from Backend (Strictly Scoped to Authenticated Vendor via JWT)
+  const fetchVendorData = React.useCallback(async () => {
+    const token = localStorage.getItem('paw_vendor_token') || localStorage.getItem('paw_token');
+    if (!token) return;
+
+    setIsLoading(true);
+    try {
+      // 1. Fetch Vendor Profile
+      const profileRes = await api.getVendorProfile();
+      if (profileRes?.success && profileRes.vendor) {
+        const v = profileRes.vendor;
+        setVendor(prev => ({ ...prev, ...v, id: v._id || v.id }));
+        localStorage.setItem('paw_vendor_profile', JSON.stringify(v));
+      }
+
+      // 2. Fetch Products & Services Catalog
+      const productsRes = await api.getVendorCatalog();
+      if (productsRes?.success && Array.isArray(productsRes.products)) {
+        const productsOnly = productsRes.products.filter(p => p.type !== 'service');
+        const servicesOnly = productsRes.products.filter(p => p.type === 'service');
+        setProducts(productsOnly);
+        setServices(servicesOnly);
+        localStorage.setItem('paw_vendor_products', JSON.stringify(productsOnly));
+        localStorage.setItem('paw_vendor_services', JSON.stringify(servicesOnly));
+      }
+
+      // 3. Fetch Orders belonging to this vendor
+      const ordersRes = await api.getVendorOrders();
+      if (ordersRes?.success && Array.isArray(ordersRes.orders)) {
+        setOrders(ordersRes.orders);
+        localStorage.setItem('paw_vendor_orders', JSON.stringify(ordersRes.orders));
+      }
+
+      // 4. Fetch Delivery Team fleet belonging to this vendor
+      const teamRes = await api.getVendorDeliveryTeam();
+      if (teamRes?.success && Array.isArray(teamRes.deliveryBoys)) {
+        setDeliveryBoys(teamRes.deliveryBoys);
+        localStorage.setItem('paw_vendor_delivery_boys', JSON.stringify(teamRes.deliveryBoys));
+      }
+    } catch (err) {
+      console.warn('Live vendor data load notice:', err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem('paw_vendor_products', JSON.stringify(products));
-  }, [products]);
-
-  useEffect(() => {
-    localStorage.setItem('paw_vendor_services', JSON.stringify(services));
-  }, [services]);
-
-  useEffect(() => {
-    localStorage.setItem('paw_vendor_delivery_boys', JSON.stringify(deliveryBoys));
-  }, [deliveryBoys]);
-
-  useEffect(() => {
-    localStorage.setItem('paw_vendor_orders', JSON.stringify(orders));
-  }, [orders]);
+    fetchVendorData();
+  }, [fetchVendorData]);
 
   // Operational toggle
-  const toggleStoreOpen = () => {
-    setVendor(prev => ({ ...prev, isStoreOpen: !prev.isStoreOpen }));
+  const toggleStoreOpen = async () => {
+    try {
+      const res = await api.toggleStoreOpen();
+      if (res?.success) {
+        setVendor(prev => {
+          const updated = { ...prev, isStoreOpen: res.isStoreOpen };
+          localStorage.setItem('paw_vendor_profile', JSON.stringify(updated));
+          return updated;
+        });
+      } else {
+        setVendor(prev => ({ ...prev, isStoreOpen: !prev.isStoreOpen }));
+      }
+    } catch (err) {
+      setVendor(prev => ({ ...prev, isStoreOpen: !prev.isStoreOpen }));
+    }
   };
 
   // 4.1 Submit Onboarding Application
-  const submitOnboardingApplication = (applicationData) => {
+  const submitOnboardingApplication = async (applicationData) => {
+    const payload = {
+      storeName: applicationData.storeName,
+      fullName: applicationData.fullName,
+      email: applicationData.email,
+      phone: applicationData.phone,
+      category: applicationData.businessTypes?.[0] || 'Pet Store & Services',
+      businessTypes: applicationData.businessTypes || [],
+      storeLicenceNumber: applicationData.storeLicenceNumber || '',
+      panNumber: applicationData.panNumber || '',
+      aadhaarNumber: applicationData.aadhaarNumber || '',
+      gstin: applicationData.gstin || '',
+      kycDocs: {
+        tradeLicenceUrl: applicationData.kycDocs?.tradeLicenceUrl || '',
+        panCardUrl: applicationData.kycDocs?.panCardUrl || '',
+        aadhaarUrl: applicationData.kycDocs?.aadhaarUrl || ''
+      },
+      photos: {
+        storeFront: applicationData.photos?.storeFront || '',
+        interior: applicationData.photos?.interior || '',
+        logo: applicationData.photos?.logo || '',
+        profilePic: applicationData.photos?.profilePic || ''
+      },
+      bankDetails: {
+        accountHolderName: applicationData.bankDetails?.accountHolderName || '',
+        bankName: applicationData.bankDetails?.bankName || '',
+        accountNumber: applicationData.bankDetails?.accountNumber || '',
+        ifscCode: applicationData.bankDetails?.ifscCode || '',
+        upiId: applicationData.bankDetails?.upiId || ''
+      },
+      location: applicationData.location || {},
+      serviceDeliveryModes: applicationData.serviceDeliveryModes || {},
+      status: 'pending'
+    };
+
     const newVendorData = {
       ...vendor,
-      ...applicationData,
-      status: 'pending',
+      ...payload,
       submittedAt: new Date().toISOString(),
       id: 'vendor-' + Date.now().toString().slice(-6)
     };
+
+    try {
+      const result = await api.submitVendorOnboarding(payload);
+      if (result?.success && result?.vendor) {
+        newVendorData.id = result.vendor._id || newVendorData.id;
+      }
+    } catch (err) {
+      console.error('Onboarding API error:', err.message);
+    }
+
     setVendor(newVendorData);
+    localStorage.setItem('paw_vendor_profile', JSON.stringify(newVendorData));
     return newVendorData;
   };
 
-  // Demo simulate admin approval
+  // Approval status update
   const setApprovalStatus = (status) => {
-    setVendor(prev => ({
-      ...prev,
-      status,
-      approvedAt: status === 'approved' ? new Date().toISOString() : null
-    }));
+    setVendor(prev => {
+      const updated = {
+        ...prev,
+        status,
+        approvedAt: status === 'approved' ? new Date().toISOString() : null
+      };
+      localStorage.setItem('paw_vendor_profile', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   // 4.2 Product Operations
-  const addProduct = (newProduct) => {
-    const id = 'prod-v' + Date.now().toString().slice(-5);
-    const product = {
-      id,
-      name: newProduct.name,
-      shortName: newProduct.shortName || newProduct.name.slice(0, 28),
-      category: newProduct.category || 'food',
-      subcategory: newProduct.subcategory || 'General',
-      petType: newProduct.petType || 'Dog',
-      brand: newProduct.brand || vendor.storeName,
-      price: Number(newProduct.price),
-      mrp: Number(newProduct.mrp) || Number(newProduct.price),
-      discountPercent: newProduct.mrp > newProduct.price 
-        ? Math.round(((newProduct.mrp - newProduct.price) / newProduct.mrp) * 100) 
-        : 0,
-      stockCount: Number(newProduct.stockCount) || 10,
-      inStock: Number(newProduct.stockCount) > 0,
-      isActive: true,
-      rating: 5.0,
-      reviewsCount: 1,
-      isInstantDelivery: true,
-      deliveryTimeMinutes: 15,
-      storeId: vendor.id,
-      storeName: vendor.storeName,
-      image: newProduct.image || '/images/prod_pedigree.jpg',
-      description: newProduct.description || 'Quality product available at our store.',
-      createdAt: new Date().toISOString()
-    };
-
-    setProducts(prev => [product, ...prev]);
-    return product;
-  };
-
-  const updateProduct = (id, updatedFields) => {
-    setProducts(prev => prev.map(p => {
-      if (p.id === id) {
-        const updated = { ...p, ...updatedFields };
-        if (updatedFields.price || updatedFields.mrp) {
-          const price = Number(updated.price);
-          const mrp = Number(updated.mrp) || price;
-          updated.discountPercent = mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0;
-        }
-        if (updatedFields.stockCount !== undefined) {
-          updated.inStock = Number(updatedFields.stockCount) > 0;
-        }
-        return updated;
+  const addProduct = async (newProduct) => {
+    try {
+      const res = await api.createVendorProduct({ ...newProduct, type: 'product' });
+      if (res?.success && res?.product) {
+        const added = { ...res.product, id: res.product._id || res.product.id };
+        setProducts(prev => [added, ...prev]);
+        return added;
       }
-      return p;
-    }));
+    } catch (err) {
+      console.warn('Backend product creation notice:', err.message);
+    }
   };
 
-  const toggleProductActive = (id) => {
-    setProducts(prev => prev.map(p => (p.id === id ? { ...p, isActive: !p.isActive } : p)));
+  const updateProduct = async (id, updatedFields) => {
+    try {
+      const res = await api.updateVendorProduct(id, updatedFields);
+      if (res?.success && res?.product) {
+        const updated = { ...res.product, id: res.product._id || res.product.id };
+        setProducts(prev => prev.map(p => (p.id === id || p._id === id) ? updated : p));
+      }
+    } catch (err) {
+      console.warn('Product update failed:', err);
+    }
   };
 
-  const toggleProductStock = (id) => {
-    setProducts(prev => prev.map(p => (p.id === id ? { 
-      ...p, 
-      inStock: !p.inStock,
-      stockCount: !p.inStock ? (p.stockCount > 0 ? p.stockCount : 10) : 0
-    } : p)));
+  const toggleProductActive = async (id) => {
+    const product = products.find(p => p.id === id || p._id === id);
+    if (product) {
+      await updateProduct(id, { isActive: !product.isActive });
+    }
   };
 
-  const deleteProduct = (id) => {
-    setProducts(prev => prev.filter(p => p.id !== id));
+  const toggleProductStock = async (id) => {
+    const product = products.find(p => p.id === id || p._id === id);
+    if (product) {
+      const inStock = !product.inStock;
+      const stockCount = !inStock ? (product.stockCount > 0 ? product.stockCount : 10) : 0;
+      await updateProduct(id, { inStock, stockCount });
+    }
   };
 
-  // 4.2 Services Operations (Home Services & Clinic Visits)
-  const addService = (newService) => {
-    const id = 'srv-v' + Date.now().toString().slice(-5);
-    const service = {
-      id,
-      name: newService.name,
-      shortName: newService.shortName || newService.name.slice(0, 28),
-      category: newService.category || 'Grooming',
-      deliveryMode: newService.deliveryMode || 'home_service',
-      price: Number(newService.price),
-      mrp: Number(newService.mrp) || Number(newService.price),
-      durationMinutes: Number(newService.durationMinutes) || 45,
-      petType: newService.petType || 'Dogs & Cats',
-      isActive: true,
-      rating: 5.0,
-      reviewsCount: 1,
-      image: newService.image || '/images/cat_grooming.jpg',
-      description: newService.description || 'Professional pet care service.',
-      features: newService.features || ['Certified Professional', 'Doorstep / Clinic Care', 'Safety Assured'],
-      visitingFee: newService.deliveryMode === 'home_service' ? (Number(newService.visitingFee) || 99) : 0,
-      tags: newService.deliveryMode === 'home_service' ? ['Doorstep', 'At-Home Service'] : ['In-Clinic', 'Appointment']
-    };
-    setServices(prev => [service, ...prev]);
-    return service;
+  const deleteProduct = async (id) => {
+    try {
+      await api.deleteVendorProduct(id);
+      setProducts(prev => prev.filter(p => p.id !== id && p._id !== id));
+    } catch (err) {
+      console.warn('Product delete failed:', err);
+    }
   };
 
-  const updateService = (id, updatedFields) => {
-    setServices(prev => prev.map(s => (s.id === id ? { ...s, ...updatedFields } : s)));
+  // 4.3 Services Operations (Home Services & Clinic Visits)
+  const addService = async (newService) => {
+    try {
+      const res = await api.createVendorProduct({ ...newService, type: 'service' });
+      if (res?.success && res?.product) {
+        const added = { ...res.product, id: res.product._id || res.product.id };
+        setServices(prev => [added, ...prev]);
+        return added;
+      }
+    } catch (err) {
+      console.warn('Service creation failed:', err);
+    }
   };
 
-  const toggleServiceActive = (id) => {
-    setServices(prev => prev.map(s => (s.id === id ? { ...s, isActive: !s.isActive } : s)));
+  const updateService = async (id, updatedFields) => {
+    try {
+      const res = await api.updateVendorProduct(id, updatedFields);
+      if (res?.success && res?.product) {
+        const updated = { ...res.product, id: res.product._id || res.product.id };
+        setServices(prev => prev.map(s => (s.id === id || s._id === id) ? updated : s));
+      }
+    } catch (err) {
+      console.warn('Service update failed:', err);
+    }
   };
 
-  const deleteService = (id) => {
-    setServices(prev => prev.filter(s => s.id !== id));
+  const toggleServiceActive = async (id) => {
+    const service = services.find(s => s.id === id || s._id === id);
+    if (service) {
+      await updateService(id, { isActive: !service.isActive });
+    }
   };
 
-  // 4.2 Delivery Team Operations
-  const addDeliveryBoy = (boyData) => {
-    const newBoy = {
-      id: 'db-' + Date.now().toString().slice(-4),
-      name: boyData.name,
-      phone: boyData.phone,
-      role: boyData.role || 'delivery_rider',
-      roleTitle: boyData.roleTitle || 'Delivery Partner',
-      vehicleType: boyData.vehicleType || 'Motorcycle',
-      vehicleNumber: boyData.vehicleNumber,
-      drivingLicence: boyData.drivingLicence || 'DL-PENDING-VERIFY',
-      status: 'available',
-      rating: 5.0,
-      totalDeliveries: 0,
-      joinedDate: new Date().toISOString().split('T')[0],
-      avatar: boyData.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${boyData.name}`
-    };
-    setDeliveryBoys(prev => [newBoy, ...prev]);
-    return newBoy;
+  const deleteService = async (id) => {
+    try {
+      await api.deleteVendorProduct(id);
+      setServices(prev => prev.filter(s => s.id !== id && s._id !== id));
+    } catch (err) {
+      console.warn('Service delete failed:', err);
+    }
   };
 
-  const updateDeliveryBoyStatus = (id, newStatus) => {
-    setDeliveryBoys(prev => prev.map(b => (b.id === id ? { ...b, status: newStatus } : b)));
+  // 4.4 Delivery Team Operations
+  const addDeliveryBoy = async (boyData) => {
+    try {
+      const res = await api.addVendorDeliveryBoy(boyData);
+      if (res?.success && res?.deliveryBoy) {
+        const added = { ...res.deliveryBoy, id: res.deliveryBoy._id || res.deliveryBoy.id };
+        setDeliveryBoys(prev => [added, ...prev]);
+        return added;
+      }
+    } catch (err) {
+      console.warn('Delivery partner add failed:', err);
+    }
   };
 
-  const deleteDeliveryBoy = (id) => {
-    setDeliveryBoys(prev => prev.filter(b => b.id !== id));
+  const updateDeliveryBoyStatus = async (id, newStatus) => {
+    try {
+      const res = await api.updateVendorDeliveryBoy(id, { status: newStatus });
+      if (res?.success && res?.deliveryBoy) {
+        setDeliveryBoys(prev => prev.map(b => (b.id === id || b._id === id) ? res.deliveryBoy : b));
+      } else {
+        setDeliveryBoys(prev => prev.map(b => (b.id === id || b._id === id) ? { ...b, status: newStatus } : b));
+      }
+    } catch (err) {
+      setDeliveryBoys(prev => prev.map(b => (b.id === id || b._id === id) ? { ...b, status: newStatus } : b));
+    }
   };
 
-  // 4.2 Orders & Delivery Boy Assignment
-  const assignDeliveryBoy = (orderId, deliveryBoyId) => {
+  const deleteDeliveryBoy = async (id) => {
+    try {
+      await api.deleteVendorDeliveryBoy(id);
+      setDeliveryBoys(prev => prev.filter(b => b.id !== id && b._id !== id));
+    } catch (err) {
+      setDeliveryBoys(prev => prev.filter(b => b.id !== id && b._id !== id));
+    }
+  };
+
+  // 4.5 Orders & Delivery Partner Assignment
+  const assignDeliveryBoy = async (orderId, deliveryBoyId) => {
+    try {
+      await api.assignVendorOrderDelivery(orderId, deliveryBoyId);
+    } catch (err) {
+      console.warn('Order assignment API error:', err);
+    }
+
     setOrders(prev => prev.map(order => {
-      if (order.id === orderId) {
+      if (order.id === orderId || order._id === orderId) {
         return {
           ...order,
           assignedDeliveryBoyId: deliveryBoyId,
-          orderStatus: order.orderStatus === 'new' || order.orderStatus === 'preparing' ? 'ready' : order.orderStatus
+          orderStatus: 'out_for_delivery'
         };
       }
       return order;
     }));
 
-    // Mark delivery boy as busy
     if (deliveryBoyId) {
-      setDeliveryBoys(prev => prev.map(b => (b.id === deliveryBoyId ? { ...b, status: 'busy', currentOrderId: orderId } : b)));
+      setDeliveryBoys(prev => prev.map(b => (b.id === deliveryBoyId || b._id === deliveryBoyId) ? { ...b, status: 'busy', currentOrderId: orderId } : b));
     }
   };
 
-  const updateOrderStatus = (orderId, newStatus) => {
-    setOrders(prev => prev.map(order => {
-      if (order.id === orderId) {
-        const updated = { ...order, orderStatus: newStatus };
-        if (newStatus === 'delivered') {
-          updated.deliveredAt = new Date().toISOString();
-          updated.paymentStatus = 'Paid';
-        }
-        return updated;
-      }
-      return order;
-    }));
+  const updateOrderStatus = async (orderId, newStatus) => {
+    const targetOrder = orders.find(o => o.id === orderId || o._id === orderId);
 
-    // If marked delivered or cancelled, release assigned delivery boy back to available
+    // If accepting or advancing order for the first time, deduct stock units immediately
+    const isAcceptedOrAdvancing = ['preparing', 'ready', 'out_for_delivery', 'delivered'].includes(newStatus);
+    if (isAcceptedOrAdvancing && targetOrder && !targetOrder.stockDeducted && Array.isArray(targetOrder.items)) {
+      setProducts(prevProducts => {
+        const updated = prevProducts.map(prod => {
+          const matchedItem = targetOrder.items.find(item => {
+            if (item.type === 'service') return false;
+            if (item.id && (item.id === prod.id || item.id === prod._id)) return true;
+            if (item.product && (item.product === prod.id || item.product === prod._id)) return true;
+            const cleanItemName = (item.name || item.title || '').replace(/\s*\([^)]*\)$/, '').trim().toLowerCase();
+            const cleanProdName = (prod.name || prod.title || '').replace(/\s*\([^)]*\)$/, '').trim().toLowerCase();
+            return cleanItemName && cleanProdName && (cleanItemName === cleanProdName || cleanProdName.startsWith(cleanItemName) || cleanItemName.startsWith(cleanProdName));
+          });
+
+          if (matchedItem) {
+            const qty = Math.max(1, Number(matchedItem.quantity) || 1);
+            const currentStock = typeof prod.stockCount === 'number' ? prod.stockCount : (typeof prod.stock === 'number' ? prod.stock : 10);
+            const newStock = Math.max(0, currentStock - qty);
+            return {
+              ...prod,
+              stockCount: newStock,
+              stock: newStock,
+              inStock: newStock > 0
+            };
+          }
+          return prod;
+        });
+
+        localStorage.setItem('paw_vendor_products', JSON.stringify(updated));
+        return updated;
+      });
+    } else if (newStatus === 'cancelled' && targetOrder && targetOrder.stockDeducted && Array.isArray(targetOrder.items)) {
+      // If cancelled after acceptance, restore stock units
+      setProducts(prevProducts => {
+        const updated = prevProducts.map(prod => {
+          const matchedItem = targetOrder.items.find(item => {
+            if (item.type === 'service') return false;
+            if (item.id && (item.id === prod.id || item.id === prod._id)) return true;
+            if (item.product && (item.product === prod.id || item.product === prod._id)) return true;
+            const cleanItemName = (item.name || item.title || '').replace(/\s*\([^)]*\)$/, '').trim().toLowerCase();
+            const cleanProdName = (prod.name || prod.title || '').replace(/\s*\([^)]*\)$/, '').trim().toLowerCase();
+            return cleanItemName && cleanProdName && (cleanItemName === cleanProdName || cleanProdName.startsWith(cleanItemName) || cleanItemName.startsWith(cleanProdName));
+          });
+
+          if (matchedItem) {
+            const qty = Math.max(1, Number(matchedItem.quantity) || 1);
+            const currentStock = typeof prod.stockCount === 'number' ? prod.stockCount : (typeof prod.stock === 'number' ? prod.stock : 0);
+            const newStock = currentStock + qty;
+            return {
+              ...prod,
+              stockCount: newStock,
+              stock: newStock,
+              inStock: newStock > 0
+            };
+          }
+          return prod;
+        });
+
+        localStorage.setItem('paw_vendor_products', JSON.stringify(updated));
+        return updated;
+      });
+    }
+
+    setOrders(prev => {
+      const updated = prev.map(order => {
+        if (order.id === orderId || order._id === orderId) {
+          const willBeDeducted = newStatus === 'cancelled' ? false : (isAcceptedOrAdvancing ? true : order.stockDeducted);
+          return {
+            ...order,
+            orderStatus: newStatus,
+            stockDeducted: willBeDeducted,
+            paymentStatus: newStatus === 'delivered' ? 'Paid' : order.paymentStatus
+          };
+        }
+        return order;
+      });
+      localStorage.setItem('paw_vendor_orders', JSON.stringify(updated));
+      return updated;
+    });
+
     if (newStatus === 'delivered' || newStatus === 'cancelled') {
-      const order = orders.find(o => o.id === orderId);
+      const order = orders.find(o => o.id === orderId || o._id === orderId);
       if (order && order.assignedDeliveryBoyId) {
         setDeliveryBoys(prev => prev.map(b => {
-          if (b.id === order.assignedDeliveryBoyId) {
+          if (b.id === order.assignedDeliveryBoyId || b._id === order.assignedDeliveryBoyId) {
             return {
               ...b,
               status: 'available',
@@ -768,6 +922,22 @@ export function VendorProvider({ children }) {
         }));
       }
     }
+
+    try {
+      await api.updateVendorOrderStatus(orderId, newStatus);
+      // Re-fetch vendor catalog to synchronize exact backend DB stock
+      const catalogRes = await api.getVendorCatalog();
+      if (catalogRes?.success && Array.isArray(catalogRes.products)) {
+        const productsOnly = catalogRes.products.filter(p => p.type !== 'service');
+        const servicesOnly = catalogRes.products.filter(p => p.type === 'service');
+        setProducts(productsOnly);
+        setServices(servicesOnly);
+        localStorage.setItem('paw_vendor_products', JSON.stringify(productsOnly));
+        localStorage.setItem('paw_vendor_services', JSON.stringify(servicesOnly));
+      }
+    } catch (err) {
+      console.warn('Order status API error:', err);
+    }
   };
 
   const addOrder = (newOrder) => {
@@ -775,15 +945,15 @@ export function VendorProvider({ children }) {
     return newOrder;
   };
 
-  // Summary Metrics for Dashboard
+  // Dynamic Summary Metrics for Dashboard
   const metrics = {
-    todayRevenue: orders.filter(o => o.orderStatus !== 'cancelled').reduce((sum, o) => sum + o.totalAmount, 0),
+    todayRevenue: orders.filter(o => o.orderStatus !== 'cancelled').reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0),
     activeOrdersCount: orders.filter(o => ['new', 'preparing', 'ready', 'out_for_delivery'].includes(o.orderStatus)).length,
     totalProductsCount: products.length,
-    activeProductsCount: products.filter(p => p.isActive).length,
+    activeProductsCount: products.filter(p => p.isActive !== false).length,
     outOfStockCount: products.filter(p => !p.inStock || p.stockCount === 0).length,
     totalServicesCount: services.length,
-    activeServicesCount: services.filter(s => s.isActive).length,
+    activeServicesCount: services.filter(s => s.isActive !== false).length,
     activeDeliveryBoysCount: deliveryBoys.filter(b => b.status === 'available' || b.status === 'busy').length,
     totalDeliveryBoysCount: deliveryBoys.length
   };
@@ -797,6 +967,8 @@ export function VendorProvider({ children }) {
         deliveryBoys,
         orders,
         metrics,
+        isLoading,
+        fetchVendorData,
         toggleStoreOpen,
         submitOnboardingApplication,
         setApprovalStatus,

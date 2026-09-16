@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   Star, 
@@ -18,26 +18,124 @@ import {
   MapPin,
   Clock
 } from 'lucide-react';
-import { PRODUCTS } from '../../data/products';
 import { useCart } from '../../context/CartContext';
 import ProductCard from '../../components/product/ProductCard';
+import { api } from '../../services/api';
+
+// Normalize API product → shape expected by ProductCard & Detail Page
+function normalizeProduct(p) {
+  if (!p) return null;
+  return {
+    id: p._id || p.id,
+    _id: p._id || p.id,
+    name: p.title || p.name || 'Pet Item',
+    shortName: (p.title || p.name || '').slice(0, 40),
+    brand: p.vendorName || p.brand || 'PAW NEAR',
+    category: p.category?.toLowerCase() || 'food',
+    subcategory: p.subCategory || p.subcategory || '',
+    petType: p.petType || 'All Pets',
+    price: p.price || 0,
+    mrp: p.mrp || p.price || 0,
+    discountPercent: p.mrp && p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0,
+    rating: p.rating || 4.5,
+    reviewsCount: p.reviewsCount || 0,
+    isTopPick: p.isFeatured || false,
+    isInstantDelivery: p.type !== 'service',
+    deliveryTimeMinutes: 20,
+    storeId: p.vendor || 'store-1',
+    storeName: p.vendorName || 'PAW NEAR Store',
+    storeDistance: '1.5 km',
+    image: p.primaryImage || (p.images && p.images[0]) || '/images/prod_pedigree.jpg',
+    gallery: p.images && p.images.length > 0 ? p.images : [p.primaryImage || '/images/prod_pedigree.jpg'],
+    type: p.type || 'product',
+    isService: p.type === 'service',
+    description: p.description || '',
+    inStock: (p.stock || 0) > 0,
+    stockCount: p.stock || 0,
+    sizes: p.sizes || [], 
+    features: p.features || [],
+    feedingGuide: p.feedingGuide || '',
+    composition: p.composition || ''
+  };
+}
 
 export default function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart, toggleWishlist, isWishlisted } = useCart();
 
-  // Find product by id or default to prod-1 (Pedigree Adult Dry Dog Food)
-  const product = PRODUCTS.find(p => p.id === id) || PRODUCTS[0];
-  const wishlisted = isWishlisted(product.id);
+  const [product, setProduct] = useState(null);
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // States
   const [selectedImgIndex, setSelectedImgIndex] = useState(0);
-  const [selectedSize, setSelectedSize] = useState(
-    product.selectedSize || (product.sizes && product.sizes[0]?.size) || '3kg'
-  );
+  const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('desc'); // 'desc' | 'feeding' | 'nutrition' | 'reviews'
+
+  // Fetch product from backend API
+  const fetchProductData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await api.getProductById(id);
+      if (res?.success && res.product) {
+        const norm = normalizeProduct(res.product);
+        setProduct(norm);
+        if (norm.sizes && norm.sizes.length > 0) {
+          setSelectedSize(norm.sizes[0].size);
+        }
+
+        // Fetch related products
+        const relatedRes = await api.getProducts(`category=${encodeURIComponent(norm.category)}`);
+        if (relatedRes?.success && Array.isArray(relatedRes.products)) {
+          const normRelated = relatedRes.products
+            .map(normalizeProduct)
+            .filter(p => p.id !== norm.id)
+            .slice(0, 4);
+          setRelatedProducts(normRelated);
+        }
+      } else {
+        setError('Product not found.');
+      }
+    } catch (err) {
+      setError('Failed to connect to server.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchProductData();
+    window.scrollTo(0, 0);
+  }, [fetchProductData]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500"></div>
+      </div>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 mt-12 max-w-2xl mx-auto space-y-4">
+        <h3 className="font-heading font-extrabold text-slate-800 text-xl">{error || 'Product Not Found'}</h3>
+        <p className="text-sm text-slate-500">The product you are looking for does not exist or has been removed.</p>
+        <button
+          onClick={() => navigate('/products')}
+          className="px-6 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-bold hover:bg-amber-600 transition-colors"
+        >
+          Back to Products
+        </button>
+      </div>
+    );
+  }
+
+  const wishlisted = isWishlisted(product.id);
 
   // Calculate pricing based on chosen size
   const activeSizeObj = product.sizes?.find(s => s.size === selectedSize) || {
@@ -53,15 +151,15 @@ export default function ProductDetailPage() {
   const galleryImages = product.gallery || [product.image];
 
   const handleAddToCart = () => {
-    addToCart(product, selectedSize, quantity);
+    addToCart(product, selectedSize || null, quantity);
   };
 
   const handleBuyNow = () => {
-    addToCart(product, selectedSize, quantity);
-    navigate('/cart');
+    const success = addToCart(product, selectedSize || null, quantity);
+    if (success) {
+      navigate('/checkout');
+    }
   };
-
-  const relatedProducts = PRODUCTS.filter(p => p.id !== product.id && p.category === product.category).slice(0, 4);
 
   return (
     <div className="space-y-6 sm:space-y-8 pb-32 md:pb-12">
@@ -72,12 +170,12 @@ export default function ProductDetailPage() {
         <span>/</span>
         <Link to="/products" className="hover:text-amber-600">Products</Link>
         <span>/</span>
-        <Link to={`/category/${product.category}`} className="hover:text-amber-600 capitalize">{product.category}</Link>
+        <Link to={`/products?category=${product.category}`} className="hover:text-amber-600 capitalize">{product.category}</Link>
         <span>/</span>
         <span className="text-slate-800 font-bold truncate max-w-xs">{product.shortName || product.name}</span>
       </nav>
 
-      {/* Main Product Hero Grid matching reference screenshot */}
+      {/* Main Product Hero Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 bg-white rounded-3xl p-4 sm:p-8 border border-slate-200/80 shadow-xs">
         
         {/* Left Column: Image Gallery with Pagination */}
@@ -86,7 +184,7 @@ export default function ProductDetailPage() {
           {/* Main Hero Image Container */}
           <div className="relative aspect-square w-full rounded-3xl bg-slate-50 border border-slate-100 flex items-center justify-center p-6 overflow-hidden group">
             
-            {/* Pagination Badge matching screenshot (e.g. 1/4) */}
+            {/* Pagination Badge */}
             <div className="absolute top-4 right-4 z-10 bg-slate-900/60 backdrop-blur-xs text-white text-[11px] font-bold px-2.5 py-1 rounded-full">
               {selectedImgIndex + 1}/{galleryImages.length}
             </div>
@@ -149,12 +247,12 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Title & Sub-weight matching screenshot */}
+            {/* Title & Sub-weight */}
             <div>
               <h1 className="font-heading font-black text-slate-900 text-xl sm:text-2xl md:text-3xl leading-snug">
                 {product.shortName || product.name}
               </h1>
-              <p className="text-sm font-bold text-slate-700 mt-0.5">{selectedSize}</p>
+              {selectedSize && <p className="text-sm font-bold text-slate-700 mt-0.5">{selectedSize}</p>}
             </div>
 
             {/* Ratings & Reviews */}
@@ -164,7 +262,7 @@ export default function ProductDetailPage() {
               <span className="text-slate-400 font-normal">({product.reviewsCount || 450} reviews)</span>
             </div>
 
-            {/* Price section matching screenshot (₹799 ₹999 20% OFF) */}
+            {/* Price section */}
             <div className="flex items-baseline gap-3 py-1">
               <span className="text-2xl sm:text-3xl font-black text-slate-900">
                 ₹{currentPrice}
@@ -181,8 +279,8 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-            {/* Feature Benefits Cards matching screenshot (Healthy Digestion, Stronger Immunity, Shiny Coat) */}
-            {product.features && (
+            {/* Feature Benefits Cards */}
+            {product.features && product.features.length > 0 && (
               <div className="grid grid-cols-3 gap-2 pt-1">
                 {product.features.map((feat, idx) => (
                   <div
@@ -198,7 +296,7 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            {/* Select Size Buttons matching screenshot: [ 1kg ] [ 3kg ] [ 10kg ] */}
+            {/* Select Size Buttons */}
             {product.sizes && product.sizes.length > 0 && (
               <div className="space-y-1.5 pt-2">
                 <label className="block text-xs font-bold text-slate-800">
@@ -248,7 +346,7 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Dual Actions matching screenshot: [ Add to Cart ] and [ Buy Now ] */}
+            {/* Dual Actions */}
             <div className="space-y-2 pt-2">
               <button
                 type="button"
@@ -272,7 +370,7 @@ export default function ProductDetailPage() {
           <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <div className="flex items-center gap-2">
               <Store className="w-4 h-4 text-amber-500" />
-              <span>Sold by: <strong className="text-slate-800">{product.storeName || 'Paws & Whiskers Supermart'}</strong></span>
+              <span>Sold by: <strong className="text-slate-800">{product.storeName || 'PAW NEAR Store'}</strong></span>
             </div>
             <span className="font-semibold text-emerald-600 flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5" /> Verified Vendor
@@ -281,7 +379,7 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
-      {/* Tabs Section: Product Description, Feeding Guide, Nutrition, Reviews */}
+      {/* Tabs Section */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-6">
         
         {/* Tab Headers */}
@@ -294,22 +392,26 @@ export default function ProductDetailPage() {
           >
             Product Description
           </button>
-          <button
-            onClick={() => setActiveTab('feeding')}
-            className={`pb-3 transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'feeding' ? 'border-amber-500 text-amber-600' : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            Feeding Guide & Usage
-          </button>
-          <button
-            onClick={() => setActiveTab('nutrition')}
-            className={`pb-3 transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === 'nutrition' ? 'border-amber-500 text-amber-600' : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            Ingredients & Composition
-          </button>
+          {!product.isService && (
+            <>
+              <button
+                onClick={() => setActiveTab('feeding')}
+                className={`pb-3 transition-colors border-b-2 whitespace-nowrap ${
+                  activeTab === 'feeding' ? 'border-amber-500 text-amber-600' : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Usage / Guide
+              </button>
+              <button
+                onClick={() => setActiveTab('nutrition')}
+                className={`pb-3 transition-colors border-b-2 whitespace-nowrap ${
+                  activeTab === 'nutrition' ? 'border-amber-500 text-amber-600' : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Composition / Ingredients
+              </button>
+            </>
+          )}
           <button
             onClick={() => setActiveTab('reviews')}
             className={`pb-3 transition-colors border-b-2 whitespace-nowrap ${
@@ -324,11 +426,11 @@ export default function ProductDetailPage() {
         <div className="text-sm text-slate-600 leading-relaxed">
           {activeTab === 'desc' && (
             <div className="space-y-4">
-              <p>{product.description}</p>
+              <p>{product.description || 'No detailed description available.'}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                  <h6 className="font-heading font-bold text-xs text-slate-800 mb-1">Suitable Pet Type</h6>
-                  <p className="text-xs text-slate-500">{product.petType} (Adult 1 year +)</p>
+                  <h6 className="font-heading font-bold text-xs text-slate-800 mb-1">Pet Type</h6>
+                  <p className="text-xs text-slate-500">{product.petType}</p>
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
                   <h6 className="font-heading font-bold text-xs text-slate-800 mb-1">Instant Store Dispatch</h6>
@@ -340,17 +442,17 @@ export default function ProductDetailPage() {
 
           {activeTab === 'feeding' && (
             <div className="space-y-3">
-              <h5 className="font-heading font-bold text-slate-800 text-sm">Recommended Daily Feeding Guideline</h5>
+              <h5 className="font-heading font-bold text-slate-800 text-sm">Recommended Guideline</h5>
               <p className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200 text-xs text-amber-950 font-medium">
-                {product.feedingGuide || 'Feed 100g - 350g daily based on pet weight and activity levels.'}
+                {product.feedingGuide || 'Follow general instructions based on pet weight and activity levels.'}
               </p>
             </div>
           )}
 
           {activeTab === 'nutrition' && (
             <div className="space-y-3">
-              <h5 className="font-heading font-bold text-slate-800 text-sm">Key Composition & Ingredients</h5>
-              <p>{product.composition || '100% natural, vet-approved formulation without artificial additives.'}</p>
+              <h5 className="font-heading font-bold text-slate-800 text-sm">Key Composition</h5>
+              <p>{product.composition || '100% natural, vet-approved formulation.'}</p>
             </div>
           )}
 
@@ -366,11 +468,11 @@ export default function ProductDetailPage() {
                     <Star className="w-3.5 h-3.5 fill-amber-500" />
                     <Star className="w-3.5 h-3.5 fill-amber-500" />
                   </div>
-                  <div className="text-[10px] text-slate-400 mt-1">450 Reviews</div>
+                  <div className="text-[10px] text-slate-400 mt-1">{product.reviewsCount || 450} Reviews</div>
                 </div>
                 <div className="text-xs text-slate-600 space-y-1">
                   <div><strong>94%</strong> of pet parents recommend this product.</div>
-                  <div className="text-slate-400">"My golden retriever Bruno loves this food, coat got much shinier!" - Ananya S.</div>
+                  <div className="text-slate-400">"My pet loves this! Highly recommended!" - Customer</div>
                 </div>
               </div>
             </div>

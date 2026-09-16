@@ -1,126 +1,123 @@
-import React from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import React, { Suspense, lazy } from 'react';
+import { Routes, Route, useLocation } from 'react-router-dom';
+import ProtectedRoute from '../components/common/ProtectedRoute';
+import LoadingFallback from '../components/common/LoadingFallback';
 
-// User Pages
-import HomePage from '../pages/Home/HomePage';
-import ProductsPage from '../pages/Products/ProductsPage';
-import ProductDetailPage from '../pages/ProductDetail/ProductDetailPage';
-import ServicesPage from '../pages/Services/ServicesPage';
-import StoresPage from '../pages/Stores/StoresPage';
-import CartPage from '../pages/Cart/CartPage';
-import CheckoutPage from '../pages/Checkout/CheckoutPage';
-import OrderSuccessPage from '../pages/OrderSuccess/OrderSuccessPage';
-import LiveTrackingPage from '../pages/LiveTracking/LiveTrackingPage';
-import AccountPage from '../pages/Account/AccountPage';
-import SupportPage from '../pages/Support/SupportPage';
-import LoginPage from '../pages/Auth/LoginPage';
-import RegisterPage from '../pages/Auth/RegisterPage';
+// 1. Customer Storefront Pages (Lazy Loaded)
+const HomePage = lazy(() => import('../pages/Home/HomePage'));
+const ProductsPage = lazy(() => import('../pages/Products/ProductsPage'));
+const ProductDetailPage = lazy(() => import('../pages/ProductDetail/ProductDetailPage'));
+const ServicesPage = lazy(() => import('../pages/Services/ServicesPage'));
+const StoresPage = lazy(() => import('../pages/Stores/StoresPage'));
+const CartPage = lazy(() => import('../pages/Cart/CartPage'));
+const CheckoutPage = lazy(() => import('../pages/Checkout/CheckoutPage'));
+const OrderSuccessPage = lazy(() => import('../pages/OrderSuccess/OrderSuccessPage'));
+const LiveTrackingPage = lazy(() => import('../pages/LiveTracking/LiveTrackingPage'));
+const AccountPage = lazy(() => import('../pages/Account/AccountPage'));
+const SupportPage = lazy(() => import('../pages/Support/SupportPage'));
+const LoginPage = lazy(() => import('../pages/Auth/LoginPage'));
+const RegisterPage = lazy(() => import('../pages/Auth/RegisterPage'));
+const NotFoundPage = lazy(() => import('../pages/NotFound/NotFoundPage'));
 
-// Vendor Module Pages & Layout (Section 4)
-import VendorLayout from '../components/vendor/VendorLayout';
-import VendorLoginPage from '../pages/Vendor/VendorLoginPage';
-import VendorOnboardingPage from '../pages/Vendor/VendorOnboardingPage';
-import VendorDashboardPage from '../pages/Vendor/VendorDashboardPage';
-import VendorProductsPage from '../pages/Vendor/VendorProductsPage';
-import VendorOrdersPage from '../pages/Vendor/VendorOrdersPage';
-import VendorDeliveryTeamPage from '../pages/Vendor/VendorDeliveryTeamPage';
-import VendorStoreProfilePage from '../pages/Vendor/VendorStoreProfilePage';
+// 2. Vendor Module Pages & Layout (Lazy Loaded)
+const VendorLayout = lazy(() => import('../components/vendor/VendorLayout'));
+const VendorLoginPage = lazy(() => import('../pages/Vendor/VendorLoginPage'));
+const VendorOnboardingPage = lazy(() => import('../pages/Vendor/VendorOnboardingPage'));
+const VendorDashboardPage = lazy(() => import('../pages/Vendor/VendorDashboardPage'));
+const VendorProductsPage = lazy(() => import('../pages/Vendor/VendorProductsPage'));
+const VendorOrdersPage = lazy(() => import('../pages/Vendor/VendorOrdersPage'));
+const VendorDeliveryTeamPage = lazy(() => import('../pages/Vendor/VendorDeliveryTeamPage'));
+const VendorStoreProfilePage = lazy(() => import('../pages/Vendor/VendorStoreProfilePage'));
 
-// Admin Module Pages & Layout (Section 3)
-import AdminLayout from '../components/admin/AdminLayout';
-import AdminLoginPage from '../pages/Admin/AdminLoginPage';
-import AdminDashboardPage from '../pages/Admin/AdminDashboardPage';
-import AdminVendorsPage from '../pages/Admin/AdminVendorsPage';
-import AdminProductsPage from '../pages/Admin/AdminProductsPage';
-import AdminRevenuePage from '../pages/Admin/AdminRevenuePage';
-import AdminPlatformPage from '../pages/Admin/AdminPlatformPage';
-import AdminSupportPage from '../pages/Admin/AdminSupportPage';
+// 3. Admin Module Pages & Layout (Lazy Loaded)
+const AdminLayout = lazy(() => import('../components/admin/AdminLayout'));
+const AdminLoginPage = lazy(() => import('../pages/Admin/AdminLoginPage'));
+const AdminDashboardPage = lazy(() => import('../pages/Admin/AdminDashboardPage'));
+const AdminVendorsPage = lazy(() => import('../pages/Admin/AdminVendorsPage'));
+const AdminProductsPage = lazy(() => import('../pages/Admin/AdminProductsPage'));
+const AdminRevenuePage = lazy(() => import('../pages/Admin/AdminRevenuePage'));
+const AdminPlatformPage = lazy(() => import('../pages/Admin/AdminPlatformPage'));
+const AdminSupportPage = lazy(() => import('../pages/Admin/AdminSupportPage'));
 
-// Delivery Module Pages & Layout (Section 5)
-import DeliveryLayout from '../components/delivery/DeliveryLayout';
-import DeliveryLoginPage from '../pages/Delivery/DeliveryLoginPage';
-import DeliveryDashboardPage from '../pages/Delivery/DeliveryDashboardPage';
-import DeliveryLiveMapPage from '../pages/Delivery/DeliveryLiveMapPage';
-import DeliveryCodPage from '../pages/Delivery/DeliveryCodPage';
-import DeliveryEarningsPage from '../pages/Delivery/DeliveryEarningsPage';
+// 4. Delivery Module Pages & Layout (Lazy Loaded)
+const DeliveryLayout = lazy(() => import('../components/delivery/DeliveryLayout'));
+const DeliveryLoginPage = lazy(() => import('../pages/Delivery/DeliveryLoginPage'));
+const DeliveryDashboardPage = lazy(() => import('../pages/Delivery/DeliveryDashboardPage'));
+const DeliveryLiveMapPage = lazy(() => import('../pages/Delivery/DeliveryLiveMapPage'));
+const DeliveryCodPage = lazy(() => import('../pages/Delivery/DeliveryCodPage'));
+const DeliveryEarningsPage = lazy(() => import('../pages/Delivery/DeliveryEarningsPage'));
 
 export default function AppRouter() {
   const location = useLocation();
 
   return (
     <div key={location.pathname} className="page-transition">
-      <Routes location={location}>
-      {/* Home Discovery */}
-      <Route path="/" element={<HomePage />} />
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes location={location}>
+          {/* Public Discovery & Storefront */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/products" element={<ProductsPage />} />
+          <Route path="/category/:categoryId" element={<ProductsPage />} />
+          <Route path="/product/:id" element={<ProductDetailPage />} />
+          <Route path="/services" element={<ServicesPage />} />
+          <Route path="/stores" element={<StoresPage />} />
+          <Route path="/store/:storeId" element={<StoresPage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/support" element={<SupportPage />} />
 
-      {/* Product Catalog & Discovery */}
-      <Route path="/products" element={<ProductsPage />} />
-      <Route path="/category/:categoryId" element={<ProductsPage />} />
-      <Route path="/product/:id" element={<ProductDetailPage />} />
+          {/* Public Auth Pages */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/signup" element={<RegisterPage />} />
 
-      {/* Grooming, Clinic & Boarding Services */}
-      <Route path="/services" element={<ServicesPage />} />
+          {/* Protected Customer Routes */}
+          <Route path="/checkout" element={<ProtectedRoute role="customer"><CheckoutPage /></ProtectedRoute>} />
+          <Route path="/order-success/:id" element={<ProtectedRoute role="customer"><OrderSuccessPage /></ProtectedRoute>} />
+          <Route path="/track-order/:id" element={<ProtectedRoute role="customer"><LiveTrackingPage /></ProtectedRoute>} />
+          <Route path="/account" element={<ProtectedRoute role="customer"><AccountPage /></ProtectedRoute>} />
+          <Route path="/account/orders" element={<ProtectedRoute role="customer"><AccountPage /></ProtectedRoute>} />
+          <Route path="/account/wishlist" element={<ProtectedRoute role="customer"><AccountPage /></ProtectedRoute>} />
+          <Route path="/account/addresses" element={<ProtectedRoute role="customer"><AccountPage /></ProtectedRoute>} />
 
-      {/* Multi-Vendor Stores Directory */}
-      <Route path="/stores" element={<StoresPage />} />
-      <Route path="/store/:storeId" element={<StoresPage />} />
+          {/* 4. Vendor Module Routes */}
+          <Route path="/vendor/login" element={<VendorLoginPage />} />
+          <Route path="/vendor/onboarding" element={<VendorOnboardingPage />} />
+          <Route path="/vendor/register" element={<VendorOnboardingPage />} />
+          
+          {/* Protected Vendor Management Routes */}
+          <Route path="/vendor" element={<ProtectedRoute role="vendor"><VendorLayout><VendorDashboardPage /></VendorLayout></ProtectedRoute>} />
+          <Route path="/vendor/dashboard" element={<ProtectedRoute role="vendor"><VendorLayout><VendorDashboardPage /></VendorLayout></ProtectedRoute>} />
+          <Route path="/vendor/products" element={<ProtectedRoute role="vendor"><VendorLayout><VendorProductsPage /></VendorLayout></ProtectedRoute>} />
+          <Route path="/vendor/orders" element={<ProtectedRoute role="vendor"><VendorLayout><VendorOrdersPage /></VendorLayout></ProtectedRoute>} />
+          <Route path="/vendor/delivery-team" element={<ProtectedRoute role="vendor"><VendorLayout><VendorDeliveryTeamPage /></VendorLayout></ProtectedRoute>} />
+          <Route path="/vendor/store-profile" element={<ProtectedRoute role="vendor"><VendorLayout><VendorStoreProfilePage /></VendorLayout></ProtectedRoute>} />
 
-      {/* Cart & Checkout */}
-      <Route path="/cart" element={<CartPage />} />
-      <Route path="/checkout" element={<CheckoutPage />} />
+          {/* 3. Admin Module Routes */}
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          
+          {/* Protected Admin Governance Routes */}
+          <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout><AdminDashboardPage /></AdminLayout></ProtectedRoute>} />
+          <Route path="/admin/dashboard" element={<ProtectedRoute role="admin"><AdminLayout><AdminDashboardPage /></AdminLayout></ProtectedRoute>} />
+          <Route path="/admin/vendors" element={<ProtectedRoute role="admin"><AdminLayout><AdminVendorsPage /></AdminLayout></ProtectedRoute>} />
+          <Route path="/admin/products" element={<ProtectedRoute role="admin"><AdminLayout><AdminProductsPage /></AdminLayout></ProtectedRoute>} />
+          <Route path="/admin/revenue" element={<ProtectedRoute role="admin"><AdminLayout><AdminRevenuePage /></AdminLayout></ProtectedRoute>} />
+          <Route path="/admin/platform" element={<ProtectedRoute role="admin"><AdminLayout><AdminPlatformPage /></AdminLayout></ProtectedRoute>} />
+          <Route path="/admin/support" element={<ProtectedRoute role="admin"><AdminLayout><AdminSupportPage /></AdminLayout></ProtectedRoute>} />
 
-      {/* Order Success & Swiggy-Style Live Map Tracking */}
-      <Route path="/order-success/:id" element={<OrderSuccessPage />} />
-      <Route path="/track-order/:id" element={<LiveTrackingPage />} />
+          {/* 5. Delivery Partner Module Routes */}
+          <Route path="/delivery/login" element={<DeliveryLoginPage />} />
+          
+          {/* Protected Delivery Operations Routes */}
+          <Route path="/delivery" element={<ProtectedRoute role="delivery"><DeliveryLayout><DeliveryDashboardPage /></DeliveryLayout></ProtectedRoute>} />
+          <Route path="/delivery/dashboard" element={<ProtectedRoute role="delivery"><DeliveryLayout><DeliveryDashboardPage /></DeliveryLayout></ProtectedRoute>} />
+          <Route path="/delivery/navigation" element={<ProtectedRoute role="delivery"><DeliveryLayout><DeliveryLiveMapPage /></DeliveryLayout></ProtectedRoute>} />
+          <Route path="/delivery/cod" element={<ProtectedRoute role="delivery"><DeliveryLayout><DeliveryCodPage /></DeliveryLayout></ProtectedRoute>} />
+          <Route path="/delivery/earnings" element={<ProtectedRoute role="delivery"><DeliveryLayout><DeliveryEarningsPage /></DeliveryLayout></ProtectedRoute>} />
 
-      {/* User Account, Pet Profiles, Wishlist & Orders */}
-      <Route path="/account" element={<AccountPage />} />
-      <Route path="/account/orders" element={<AccountPage />} />
-      <Route path="/account/wishlist" element={<AccountPage />} />
-      <Route path="/account/addresses" element={<AccountPage />} />
-
-      {/* Authentication Pages */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/signup" element={<RegisterPage />} />
-
-      {/* In-App Customer Support & Returns */}
-      <Route path="/support" element={<SupportPage />} />
-
-      {/* 4. Vendor Module Routes */}
-      <Route path="/vendor/login" element={<VendorLoginPage />} />
-      <Route path="/vendor/onboarding" element={<VendorOnboardingPage />} />
-      <Route path="/vendor/register" element={<VendorOnboardingPage />} />
-      
-      {/* 4.2 Vendor Store Management Routes with VendorLayout */}
-      <Route path="/vendor" element={<VendorLayout><VendorDashboardPage /></VendorLayout>} />
-      <Route path="/vendor/dashboard" element={<VendorLayout><VendorDashboardPage /></VendorLayout>} />
-      <Route path="/vendor/products" element={<VendorLayout><VendorProductsPage /></VendorLayout>} />
-      <Route path="/vendor/orders" element={<VendorLayout><VendorOrdersPage /></VendorLayout>} />
-      <Route path="/vendor/delivery-team" element={<VendorLayout><VendorDeliveryTeamPage /></VendorLayout>} />
-      <Route path="/vendor/store-profile" element={<VendorLayout><VendorStoreProfilePage /></VendorLayout>} />
-
-      {/* 3. Admin Module Routes */}
-      <Route path="/admin/login" element={<AdminLoginPage />} />
-      <Route path="/admin" element={<AdminLayout><AdminDashboardPage /></AdminLayout>} />
-      <Route path="/admin/dashboard" element={<AdminLayout><AdminDashboardPage /></AdminLayout>} />
-      <Route path="/admin/vendors" element={<AdminLayout><AdminVendorsPage /></AdminLayout>} />
-      <Route path="/admin/products" element={<AdminLayout><AdminProductsPage /></AdminLayout>} />
-      <Route path="/admin/revenue" element={<AdminLayout><AdminRevenuePage /></AdminLayout>} />
-      <Route path="/admin/platform" element={<AdminLayout><AdminPlatformPage /></AdminLayout>} />
-      <Route path="/admin/support" element={<AdminLayout><AdminSupportPage /></AdminLayout>} />
-
-      {/* 5. Delivery Partner Module Routes */}
-      <Route path="/delivery/login" element={<DeliveryLoginPage />} />
-      <Route path="/delivery" element={<DeliveryLayout><DeliveryDashboardPage /></DeliveryLayout>} />
-      <Route path="/delivery/dashboard" element={<DeliveryLayout><DeliveryDashboardPage /></DeliveryLayout>} />
-      <Route path="/delivery/navigation" element={<DeliveryLayout><DeliveryLiveMapPage /></DeliveryLayout>} />
-      <Route path="/delivery/cod" element={<DeliveryLayout><DeliveryCodPage /></DeliveryLayout>} />
-      <Route path="/delivery/earnings" element={<DeliveryLayout><DeliveryEarningsPage /></DeliveryLayout>} />
-
-      {/* Fallback Route */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  </div>
+          {/* 404 Not Found Catch-All Route */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Suspense>
+    </div>
   );
 }

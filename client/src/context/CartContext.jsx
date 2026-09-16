@@ -1,46 +1,59 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
 
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
-  // Preload initial items matching reference screenshot (Pedigree Adult Dry Dog Food 3kg + Nylon Dog Collar)
-  const [items, setItems] = useState([
-    {
-      id: 'prod-1',
-      name: 'Pedigree Adult Dry Dog Food 3kg',
-      shortName: 'Pedigree Adult Dry Dog Food 3kg',
-      category: 'food',
-      price: 799,
-      mrp: 999,
-      selectedSize: '3kg',
-      quantity: 1,
-      image: '/images/prod_pedigree.jpg',
-      storeName: 'Paws & Whiskers Supermart'
-    },
-    {
-      id: 'prod-2',
-      name: 'Nylon Dog Collar (Blue)',
-      shortName: 'Nylon Dog Collar (Blue)',
-      category: 'accessories',
-      price: 299,
-      mrp: 399,
-      selectedSize: 'Medium (M)',
-      quantity: 1,
-      image: '/images/prod_collar_blue.jpg',
-      storeName: 'Canine Castle Pet Hub'
-    }
-  ]);
+  const { user, setIsAuthModalOpen } = useAuth();
 
-  const [wishlist, setWishlist] = useState(['prod-1', 'prod-5', 'prod-7']);
+  const [items, setItems] = useState(() => {
+    const saved = localStorage.getItem('paw_cart');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { /* ignore */ }
+    }
+    return [];
+  });
+
+  const [wishlist, setWishlist] = useState(() => {
+    const saved = localStorage.getItem('paw_wishlist');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { /* ignore */ }
+    }
+    return [];
+  });
+
   const [appliedCoupon, setAppliedCoupon] = useState({ code: 'PAWFIRST', discount: 200, label: 'First Order Discount' });
   const [toastMessage, setToastMessage] = useState(null);
+
+  // Sync cart with localStorage
+  useEffect(() => {
+    localStorage.setItem('paw_cart', JSON.stringify(items));
+  }, [items]);
+
+  // Sync wishlist with localStorage
+  useEffect(() => {
+    localStorage.setItem('paw_wishlist', JSON.stringify(wishlist));
+  }, [wishlist]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const requireAuth = (actionName = 'perform this action') => {
+    if (!user || !user.isLoggedIn) {
+      showToast(`🔒 Please sign in to ${actionName}!`);
+      setIsAuthModalOpen(true);
+      return false;
+    }
+    return true;
+  };
+
   const addToCart = (product, selectedSize = null, quantity = 1) => {
+    if (!requireAuth('add items to your cart')) {
+      return false;
+    }
+
     setItems(prevItems => {
       const sizeToUse = selectedSize || product.selectedSize || (product.sizes && product.sizes[0]?.size) || 'Standard';
       const existingIndex = prevItems.findIndex(item => item.id === product.id && item.selectedSize === sizeToUse);
@@ -67,14 +80,17 @@ export function CartProvider({ children }) {
             selectedSize: sizeToUse,
             quantity: quantity,
             image: product.image,
-            storeName: product.storeName || 'Paws & Whiskers'
+            storeName: product.storeName || 'Paws & Whiskers',
+            vendorId: product.vendor || product.vendorId || ''
           }
         ];
       }
     });
+    return true;
   };
 
   const updateQuantity = (id, selectedSize, delta) => {
+    if (!requireAuth('update cart items')) return;
     setItems(prev => {
       return prev
         .map(item => {
@@ -98,6 +114,10 @@ export function CartProvider({ children }) {
   };
 
   const toggleWishlist = (productId) => {
+    if (!requireAuth('save favorite items')) {
+      return false;
+    }
+
     setWishlist(prev => {
       if (prev.includes(productId)) {
         showToast('Removed from Wishlist');
@@ -107,6 +127,7 @@ export function CartProvider({ children }) {
         return [...prev, productId];
       }
     });
+    return true;
   };
 
   const isWishlisted = (productId) => wishlist.includes(productId);
@@ -144,7 +165,7 @@ export function CartProvider({ children }) {
   const deliveryFee = itemsTotal >= 499 || itemsTotal === 0 ? 0 : 39;
   const platformFee = items.length > 0 ? 9 : 0;
   const couponDiscount = appliedCoupon ? Math.min(appliedCoupon.discount, itemsTotal) : 0;
-  const totalSavings = rawSavings + couponDiscount + (itemsTotal >= 499 ? 39 : 0);
+  const totalSavings = rawSavings + couponDiscount;
   
   const finalTotal = Math.max(0, itemsTotal + deliveryFee + platformFee - couponDiscount);
 

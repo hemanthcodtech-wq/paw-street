@@ -1,32 +1,158 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams, Link } from 'react-router-dom';
 import { 
   Package, 
   Plus, 
   Search, 
-  Filter, 
   Edit, 
   Trash2, 
   CheckCircle2, 
   X, 
   AlertCircle, 
   Sparkles,
-  ToggleLeft,
-  ToggleRight,
-  TrendingUp,
-  Tag,
   Eye,
   EyeOff,
   Home,
   Building,
   Clock,
   Scissors,
-  Stethoscope,
   Calendar,
-  ExternalLink
+  Upload,
+  ImagePlus,
+  Loader2
 } from 'lucide-react';
 import { useVendor } from '../../context/VendorContext';
+import { api } from '../../services/api';
+
+// ─── Cloudinary Image Upload Component ──────────────────────────────────────
+function ImageUploadField({ value, onChange, folder = 'pawnear/products', label = 'Product Image' }) {
+  const inputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Only image files are allowed (JPG, PNG, WEBP)');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('Image must be smaller than 5MB');
+      return;
+    }
+    setUploadError('');
+    setUploading(true);
+    try {
+      const result = await api.uploadImage(file, folder);
+      if (result?.success && result?.url) {
+        onChange(result.url);
+      } else {
+        setUploadError(result?.message || 'Upload failed. Please try again.');
+      }
+    } catch (err) {
+      setUploadError('Upload failed. Check your connection.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  };
+
+  return (
+    <div>
+      <label className="block font-bold text-slate-700 mb-1.5 text-xs">
+        {label} *
+      </label>
+
+      {/* If image is already uploaded, show preview + change option */}
+      {value && !uploading ? (
+        <div className="relative group rounded-2xl overflow-hidden border-2 border-amber-400 bg-slate-50">
+          <img
+            src={value}
+            alt="Product"
+            className="w-full h-36 object-contain p-2"
+          />
+          <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className="px-3 py-1.5 bg-white text-slate-900 font-bold text-xs rounded-xl flex items-center gap-1.5"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              Change Image
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className="p-1.5 bg-rose-600 text-white rounded-xl"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" />
+            Uploaded
+          </div>
+        </div>
+      ) : (
+        <div
+          onClick={() => !uploading && inputRef.current?.click()}
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+          className={`relative border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
+            dragOver
+              ? 'border-amber-500 bg-amber-50 scale-[1.01]'
+              : uploading
+              ? 'border-blue-300 bg-blue-50 cursor-not-allowed'
+              : 'border-slate-300 bg-slate-50 hover:border-amber-400 hover:bg-amber-50/50'
+          }`}
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+              <p className="text-xs font-bold text-blue-600">Uploading to Cloudinary...</p>
+              <p className="text-[10px] text-slate-400">Please wait</p>
+            </>
+          ) : (
+            <>
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center">
+                <ImagePlus className="w-6 h-6 text-amber-600" />
+              </div>
+              <div className="text-center">
+                <p className="text-xs font-bold text-slate-700">Click or drag & drop to upload</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">JPG, PNG, WEBP · Max 5MB · Saved to Cloudinary</p>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className="hidden"
+        onChange={(e) => handleFile(e.target.files?.[0])}
+      />
+
+      {uploadError && (
+        <p className="mt-1.5 text-[11px] text-rose-600 font-medium flex items-center gap-1">
+          <AlertCircle className="w-3 h-3 shrink-0" />
+          {uploadError}
+        </p>
+      )}
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function VendorProductsPage() {
   const { 
@@ -98,7 +224,7 @@ export default function VendorProductsPage() {
     durationMinutes: 45,
     petType: 'Dogs & Cats',
     visitingFee: 99,
-    image: '/images/cat_grooming.jpg',
+    image: '',
     description: '',
     featuresText: 'Professional Gentle Care\nSanitized Equipment\nDoorstep Service'
   });
@@ -114,7 +240,7 @@ export default function VendorProductsPage() {
       price: '',
       mrp: '',
       stockCount: 25,
-      image: '/images/prod_pedigree.jpg',
+      image: '',
       description: ''
     });
     setShowAddProductModal(true);
@@ -160,7 +286,7 @@ export default function VendorProductsPage() {
       durationMinutes: 45,
       petType: 'Dogs & Cats',
       visitingFee: 99,
-      image: '/images/cat_grooming.jpg',
+      image: '',
       description: 'Comprehensive pet care service delivered by certified professionals.',
       featuresText: 'Certified Professional Care\nSanitized Clinical Kit\nHealth Card Update'
     });
@@ -179,7 +305,7 @@ export default function VendorProductsPage() {
       durationMinutes: srv.durationMinutes || 45,
       petType: srv.petType || 'Dogs & Cats',
       visitingFee: srv.visitingFee || (srv.deliveryMode === 'home_service' ? 99 : 0),
-      image: srv.image || '/images/cat_grooming.jpg',
+      image: srv.image || '',
       description: srv.description || '',
       featuresText: (srv.features || []).join('\n')
     });
@@ -352,12 +478,28 @@ export default function VendorProductsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
-                  {filteredProducts.map((product) => (
-                    <tr key={product.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3 min-w-[200px]">
-                          <img 
-                            src={product.image} 
+                  {filteredProducts.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-slate-400">
+                        <Package className="w-10 h-10 mx-auto mb-2.5 text-slate-300 stroke-[1.5]" />
+                        <p className="font-bold text-slate-700 text-sm">No products listed in your store catalog yet</p>
+                        <p className="text-xs text-slate-400 mt-1 mb-4">Add your inventory items to start receiving instant delivery orders from pet parents.</p>
+                        <button
+                          onClick={handleOpenAddProduct}
+                          className="px-4 py-2 bg-[#FFB703] hover:bg-[#E5A015] text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all inline-flex items-center gap-1.5"
+                        >
+                          <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>Add Your First Product</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredProducts.map((product) => (
+                      <tr key={product.id} className="hover:bg-slate-50/60 transition-colors">
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3 min-w-[200px]">
+                            <img 
+                              src={product.image} 
                             alt={product.name} 
                             className="w-11 h-11 rounded-xl object-contain bg-slate-50 p-1 border border-slate-100 shrink-0" 
                           />
@@ -452,7 +594,7 @@ export default function VendorProductsPage() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )))}
                 </tbody>
               </table>
             </div>
@@ -513,12 +655,26 @@ export default function VendorProductsPage() {
           </div>
 
           {/* Service Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredServices.map(srv => {
-              const isHome = srv.deliveryMode === 'home_service';
-              return (
-                <div 
-                  key={srv.id}
+          {filteredServices.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center">
+              <Scissors className="w-10 h-10 mx-auto mb-2.5 text-slate-300 stroke-[1.5]" />
+              <p className="font-bold text-slate-700 text-sm">No services configured yet</p>
+              <p className="text-xs text-slate-400 mt-1 mb-4">Enable At-Home Grooming, Doctor Consultations, or Clinic Walk-ins for pet owners.</p>
+              <button
+                onClick={handleOpenAddService}
+                className="px-4 py-2 bg-[#FFB703] hover:bg-[#E5A015] text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all inline-flex items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                <span>Add Your First Service</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredServices.map(srv => {
+                const isHome = srv.deliveryMode === 'home_service';
+                return (
+                  <div 
+                    key={srv.id}
                   className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex flex-col justify-between gap-4 hover:border-amber-300 transition-all group"
                 >
                   <div className="space-y-3">
@@ -643,7 +799,8 @@ export default function VendorProductsPage() {
                 </div>
               );
             })}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -807,31 +964,12 @@ export default function VendorProductsPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Select Product Image Sample *
-                  </label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[
-                      { path: '/images/products/royal_canin_maxi.png', label: 'Dog Food' },
-                      { path: '/images/products/whiskas_tuna.png', label: 'Cat Food' },
-                      { path: '/images/products/rubber_bone.png', label: 'Chew Toy' },
-                      { path: '/images/products/himalaya_shampoo.png', label: 'Pet Shampoo' },
-                    ].map((img) => (
-                      <button
-                        key={img.path}
-                        type="button"
-                        onClick={() => setProductFormData({ ...productFormData, image: img.path })}
-                        className={`p-1.5 rounded-xl border flex flex-col items-center gap-1 transition-all ${
-                          productFormData.image === img.path ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-300' : 'border-slate-200 hover:bg-slate-50'
-                        }`}
-                      >
-                        <img src={img.path} alt={img.label} className="w-9 h-9 object-contain mix-blend-multiply" />
-                        <span className="text-[10px] text-slate-600 font-medium truncate">{img.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <ImageUploadField
+                  label="Product Image"
+                  folder="pawnear/products"
+                  value={productFormData.image}
+                  onChange={(url) => setProductFormData(prev => ({ ...prev, image: url }))}
+                />
               </div>
 
               {/* Sticky Footer */}
@@ -1045,6 +1183,13 @@ export default function VendorProductsPage() {
                     </div>
                   )}
                 </div>
+
+                <ImageUploadField
+                  label="Service Image"
+                  folder="pawnear/services"
+                  value={serviceFormData.image}
+                  onChange={(url) => setServiceFormData(prev => ({ ...prev, image: url }))}
+                />
 
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">

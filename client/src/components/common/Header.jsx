@@ -12,7 +12,10 @@ import {
   X,
   Sparkles,
   Zap,
-  PhoneCall
+  PhoneCall,
+  LogOut,
+  Package,
+  ShieldCheck
 } from 'lucide-react';
 import Logo from './Logo';
 import { useCart } from '../../context/CartContext';
@@ -24,16 +27,24 @@ export default function Header() {
   const location = useLocation();
   const { itemCount, wishlist } = useCart();
   const { selectedLocation, setIsLocationModalOpen } = useLocationContext();
-  const { user, setIsAuthModalOpen } = useAuth();
+  const { user, logout, setIsAuthModalOpen } = useAuth();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
     }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    setIsUserDropdownOpen(false);
+    setIsMobileMenuOpen(false);
+    navigate('/login');
   };
 
   const navLinks = [
@@ -61,10 +72,12 @@ export default function Header() {
               <span>🏪 Vendor Portal</span>
             </Link>
             <span>•</span>
-            <Link to="/services" className="hover:text-white transition-colors">Book Salon at Home</Link>
+            <Link to="/delivery/login" className="hover:text-white transition-colors bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-md text-white font-bold flex items-center gap-1">
+              <span>🛵 Rider Portal</span>
+            </Link>
             <span>•</span>
-            <Link to="/support" className="hover:text-white transition-colors flex items-center gap-1">
-              <PhoneCall className="w-3 h-3" /> 24/7 Pet Helpline
+            <Link to="/admin/login" className="hover:text-white transition-colors bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-md text-white font-bold flex items-center gap-1">
+              <span>👑 Admin</span>
             </Link>
           </div>
         </div>
@@ -146,7 +159,7 @@ export default function Header() {
 
             {/* Wishlist Link (Desktop) */}
             <Link
-              to="/account/wishlist"
+              to="/account?tab=wishlist"
               className="relative p-1.5 sm:p-2 text-slate-700 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors hidden sm:flex items-center justify-center"
               title="My Wishlist"
             >
@@ -158,7 +171,7 @@ export default function Header() {
               )}
             </Link>
 
-            {/* Cart Button with Golden Badge matching reference UI */}
+            {/* Cart Button with Dynamic Badge */}
             <Link
               to="/cart"
               className="relative p-1.5 sm:p-2 text-slate-800 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors flex items-center justify-center"
@@ -166,24 +179,78 @@ export default function Header() {
             >
               <div className="relative">
                 <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
-                <span className="absolute -top-1.5 -right-2 bg-amber-500 text-slate-950 text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
-                  {itemCount > 0 ? itemCount : 2}
-                </span>
+                {itemCount > 0 && (
+                  <span className="absolute -top-1.5 -right-2 bg-amber-500 text-slate-950 text-[10px] font-black min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center shadow-xs">
+                    {itemCount}
+                  </span>
+                )}
               </div>
             </Link>
 
-            {/* User Account (Desktop) */}
+            {/* User Account with Dropdown (Desktop) */}
             {user ? (
-              <Link
-                to="/account"
-                className="hidden sm:flex items-center gap-2 p-1.5 hover:bg-slate-100 rounded-xl transition-colors border border-slate-200"
-              >
-                <img
-                  src={user.avatar}
-                  alt={user.name}
-                  className="w-8 h-8 rounded-lg object-cover border border-amber-300"
-                />
-              </Link>
+              <div className="relative hidden sm:block">
+                <button
+                  onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                  className="flex items-center gap-2 p-1.5 hover:bg-slate-100 rounded-xl transition-colors border border-slate-200 group"
+                  aria-label="User Account Menu"
+                >
+                  {user.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.name}
+                      className="w-8 h-8 rounded-lg object-cover border border-amber-300"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-500 to-orange-400 text-white font-black text-xs flex items-center justify-center border border-amber-300 shadow-xs">
+                      {(user.name || 'U').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-800 transition-transform" />
+                </button>
+
+                {/* Dropdown Menu */}
+                {isUserDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white text-slate-900 rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="p-2.5 border-b border-slate-100">
+                      <p className="font-bold text-xs text-slate-900 truncate">{user.name}</p>
+                      <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
+                      <span className="inline-block mt-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-800">
+                        {user.role || 'customer'}
+                      </span>
+                    </div>
+
+                    <div className="py-1 space-y-0.5 text-xs font-semibold text-slate-700">
+                      <Link
+                        to="/account"
+                        onClick={() => setIsUserDropdownOpen(false)}
+                        className="flex items-center gap-2 p-2 rounded-xl hover:bg-amber-50 hover:text-amber-900 transition-colors"
+                      >
+                        <User className="w-4 h-4 text-amber-600" />
+                        <span>My Pet Profiles</span>
+                      </Link>
+                      <Link
+                        to="/account?tab=orders"
+                        onClick={() => setIsUserDropdownOpen(false)}
+                        className="flex items-center gap-2 p-2 rounded-xl hover:bg-amber-50 hover:text-amber-900 transition-colors"
+                      >
+                        <Package className="w-4 h-4 text-amber-600" />
+                        <span>Orders & History</span>
+                      </Link>
+                    </div>
+
+                    <div className="pt-1 border-t border-slate-100">
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-2 p-2 rounded-xl text-rose-600 hover:bg-rose-50 text-xs font-bold transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Log Out</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <Link
                 to="/login"
@@ -267,20 +334,48 @@ export default function Header() {
           </div>
 
           <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-            <Link 
-              to="/account" 
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="text-slate-700 font-semibold hover:text-amber-600"
-            >
-              My Pet Profiles
-            </Link>
-            <Link 
-              to="/support" 
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="text-amber-600 font-semibold"
-            >
-              Need Help?
-            </Link>
+            {user ? (
+              <div className="flex items-center justify-between w-full">
+                <Link 
+                  to="/account" 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-slate-700 font-semibold hover:text-amber-600 flex items-center gap-2"
+                >
+                  {user.avatar ? (
+                    <img src={user.avatar} alt="" className="w-6 h-6 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-amber-500 to-orange-400 text-white font-black text-[10px] flex items-center justify-center">
+                      {(user.name || 'U').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span>{user.name}</span>
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="text-rose-600 font-bold flex items-center gap-1 hover:underline"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Log Out</span>
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link 
+                  to="/login" 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-amber-600 font-bold hover:underline"
+                >
+                  Sign In
+                </Link>
+                <Link 
+                  to="/support" 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-slate-600 font-semibold"
+                >
+                  Need Help?
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}

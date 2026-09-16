@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../services/api';
 
 const DeliveryContext = createContext();
 
@@ -32,6 +33,22 @@ export function DeliveryProvider({ children }) {
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState(true);
+
+  // Fetch Live Delivery Profile from Backend
+  const fetchDeliveryData = React.useCallback(async () => {
+    try {
+      const res = await api.getDeliveryProfile();
+      if (res && res.success && res.rider) {
+        setRider(prev => ({ ...prev, ...res.rider, id: res.rider._id || prev.id }));
+      }
+    } catch (err) {
+      console.warn('Live delivery data load notice:', err.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDeliveryData();
+  }, [fetchDeliveryData]);
 
   // ----------------------------------------------------
   // 5.1 LIVE DELIVERY ASSIGNMENTS & PIPELINE
@@ -184,10 +201,17 @@ export function DeliveryProvider({ children }) {
   // ----------------------------------------------------
 
   // 1. Toggle Online/Offline Duty
-  const toggleOnlineStatus = () => {
+  const toggleOnlineStatus = async () => {
+    const nextStatus = !rider.onlineStatus;
+    try {
+      api.toggleDeliveryDuty(nextStatus).catch(e => console.log('Duty toggled locally'));
+    } catch (err) {
+      // offline fallback
+    }
+
     setRider(prev => ({
       ...prev,
-      onlineStatus: !prev.onlineStatus
+      onlineStatus: nextStatus
     }));
   };
 
@@ -236,9 +260,15 @@ export function DeliveryProvider({ children }) {
   };
 
   // 5. Collect COD Payment (Mandatory before marking delivered)
-  const collectCodPayment = (deliveryId, receivedAmount, paymentMode = 'Cash') => {
+  const collectCodPayment = async (deliveryId, receivedAmount, paymentMode = 'Cash') => {
     const order = assignments.find(a => a.id === deliveryId);
     if (!order) return;
+
+    try {
+      api.collectCodPayment(order.orderId, receivedAmount).catch(e => console.log('COD collected locally'));
+    } catch (err) {
+      // offline fallback
+    }
 
     setAssignments(prev => prev.map(a => {
       if (a.id === deliveryId) {
@@ -267,9 +297,15 @@ export function DeliveryProvider({ children }) {
   };
 
   // 6. Deposit and Reconcile Cash with Platform
-  const reconcileCashDeposit = (depositAmount, referenceNumber, paymentMethod = 'UPI Deposit') => {
+  const reconcileCashDeposit = async (depositAmount, referenceNumber, paymentMethod = 'UPI Deposit') => {
     const numericAmount = parseFloat(depositAmount) || 0;
     if (numericAmount <= 0) return;
+
+    try {
+      api.reconcileCashDeposit({ depositAmount: numericAmount, referenceNumber, paymentMethod }).catch(e => console.log('Deposit reconciled locally'));
+    } catch (err) {
+      // offline fallback
+    }
 
     setRider(r => ({
       ...r,

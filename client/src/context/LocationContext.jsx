@@ -4,66 +4,26 @@ const LocationContext = createContext();
 
 export function LocationProvider({ children }) {
   const [selectedLocation, setSelectedLocation] = useState({
-    id: 'addr-1',
-    type: 'Home',
-    tag: 'Primary',
-    addressLine1: 'Flat 402, Royal Palms Residency, Road No 12',
+    id: 'addr-default',
+    type: 'Location',
+    tag: 'Delivery Area',
+    addressLine1: 'Road No 12, Banjara Hills',
     area: 'Banjara Hills',
     city: 'Hyderabad',
     state: 'Telangana',
     pincode: '500034',
-    shortDisplay: 'Banjara Hills, Hyderabad, Telangana',
+    shortDisplay: 'Banjara Hills, Hyderabad',
     lat: 17.4156,
     lng: 78.4350
   });
 
-  const [savedAddresses, setSavedAddresses] = useState([
-    {
-      id: 'addr-1',
-      type: 'Home',
-      tag: 'Primary',
-      name: 'Aarav Sharma',
-      phone: '+91 98765 43210',
-      addressLine1: 'Flat 402, Royal Palms Residency, Road No 12',
-      area: 'Banjara Hills',
-      city: 'Hyderabad',
-      state: 'Telangana',
-      pincode: '500034',
-      shortDisplay: 'Banjara Hills, Hyderabad, Telangana',
-      lat: 17.4156,
-      lng: 78.4350
-    },
-    {
-      id: 'addr-2',
-      type: 'Work',
-      tag: 'Office',
-      name: 'Aarav Sharma',
-      phone: '+91 98765 43210',
-      addressLine1: 'Tower B, Cyber Gateway, Hitec City',
-      area: 'Madhapur',
-      city: 'Hyderabad',
-      state: 'Telangana',
-      pincode: '500081',
-      shortDisplay: 'Hitec City, Madhapur, Hyderabad',
-      lat: 17.4435,
-      lng: 78.3772
-    },
-    {
-      id: 'addr-3',
-      type: 'Other',
-      tag: 'Parents Villa',
-      name: 'Aarav Sharma',
-      phone: '+91 98765 43210',
-      addressLine1: 'Villa 18, Palm Meadows, Jubilee Hills',
-      area: 'Jubilee Hills',
-      city: 'Hyderabad',
-      state: 'Telangana',
-      pincode: '500033',
-      shortDisplay: 'Jubilee Hills, Hyderabad',
-      lat: 17.4319,
-      lng: 78.4073
-    }
-  ]);
+  const [savedAddresses, setSavedAddresses] = useState(() => {
+    try {
+      const saved = localStorage.getItem('paw_addresses');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [];
+  });
 
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isDetectingGPS, setIsDetectingGPS] = useState(false);
@@ -79,9 +39,21 @@ export function LocationProvider({ children }) {
       id: `addr-${Date.now()}`,
       shortDisplay: `${newAddr.area || newAddr.addressLine1}, ${newAddr.city}`
     };
-    setSavedAddresses(prev => [created, ...prev]);
+    setSavedAddresses(prev => {
+      const updated = [created, ...prev];
+      localStorage.setItem('paw_addresses', JSON.stringify(updated));
+      return updated;
+    });
     setSelectedLocation(created);
     return created;
+  };
+
+  const deleteAddress = (id) => {
+    setSavedAddresses(prev => {
+      const updated = prev.filter(a => a.id !== id);
+      localStorage.setItem('paw_addresses', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const detectCurrentLocation = () => {
@@ -116,6 +88,7 @@ export function LocationProvider({ children }) {
         setIsLocationModalOpen,
         switchLocation,
         addAddress,
+        deleteAddress,
         detectCurrentLocation
       }}
     >

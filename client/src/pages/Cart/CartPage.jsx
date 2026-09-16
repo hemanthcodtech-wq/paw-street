@@ -16,9 +16,11 @@ import {
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useLocationContext } from '../../context/LocationContext';
+import { useAuth } from '../../context/AuthContext';
 
 export default function CartPage() {
   const navigate = useNavigate();
+  const { user, setIsAuthModalOpen } = useAuth();
   const { 
     items, 
     updateQuantity, 
@@ -33,7 +35,8 @@ export default function CartPage() {
     finalTotal, 
     appliedCoupon, 
     applyCoupon, 
-    removeCoupon 
+    removeCoupon,
+    showToast
   } = useCart();
 
   const { selectedLocation, setIsLocationModalOpen } = useLocationContext();
@@ -239,22 +242,6 @@ export default function CartPage() {
                 {couponError && (
                   <p className="text-[11px] text-rose-600 font-semibold">{couponError}</p>
                 )}
-                <div className="flex gap-1.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => applyCoupon('PAWFIRST')}
-                    className="text-[10px] font-bold px-2 py-1 bg-amber-50 text-amber-800 rounded-md border border-amber-200"
-                  >
-                    PAWFIRST (₹200 OFF)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyCoupon('FREEDELIVERY')}
-                    className="text-[10px] font-bold px-2 py-1 bg-amber-50 text-amber-800 rounded-md border border-amber-200"
-                  >
-                    FREEDELIVERY
-                  </button>
-                </div>
               </form>
             )}
           </div>
@@ -267,9 +254,16 @@ export default function CartPage() {
 
             <div className="space-y-2.5 text-xs">
               <div className="flex justify-between text-slate-600">
-                <span>Item Total ({items.length} items)</span>
-                <span className="font-bold text-slate-800">₹{itemsTotal}</span>
+                <span>Item Total (MRP)</span>
+                <span className="font-bold text-slate-800">₹{mrpTotal}</span>
               </div>
+
+              {mrpTotal > itemsTotal && (
+                <div className="flex justify-between text-emerald-600 font-bold">
+                  <span>Discount on MRP</span>
+                  <span>- ₹{mrpTotal - itemsTotal}</span>
+                </div>
+              )}
 
               {couponDiscount > 0 && (
                 <div className="flex justify-between text-emerald-600 font-bold">
@@ -297,9 +291,16 @@ export default function CartPage() {
               </div>
             </div>
 
-            {/* Proceed to Checkout CTA matching screenshot */}
+            {/* Proceed to Checkout CTA */}
             <button
-              onClick={() => navigate('/checkout')}
+              onClick={() => {
+                if (!user || !user.isLoggedIn) {
+                  showToast('🔒 Please sign in to proceed to checkout!');
+                  setIsAuthModalOpen(true);
+                  return;
+                }
+                navigate('/checkout');
+              }}
               className="w-full py-3.5 bg-[#E5A015] hover:bg-[#D49010] active:scale-98 text-slate-950 font-bold text-sm sm:text-base rounded-xl shadow-xs transition-all flex items-center justify-center gap-2"
             >
               <span>Proceed to Checkout</span>

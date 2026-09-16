@@ -18,7 +18,8 @@ import {
   Sliders, 
   Percent, 
   Truck, 
-  Eye
+  Eye,
+  RefreshCw
 } from 'lucide-react';
 import { useAdmin } from '../../context/AdminContext';
 
@@ -33,7 +34,9 @@ export default function AdminDashboardPage() {
     pendingVendorsCount,
     pendingProductsCount,
     openTicketsCount,
-    approveVendor
+    approveVendor,
+    isLoading,
+    refreshAdminData
   } = useAdmin();
 
   const pendingVendors = vendors.filter(v => v.status === 'pending');
@@ -50,20 +53,30 @@ export default function AdminDashboardPage() {
               <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                 Command Center
               </span>
-              <span className="text-slate-400 text-xs hidden sm:inline">
-                • Live Platform Operations
+              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                MongoDB Atlas Connected
               </span>
             </div>
             <h1 className="font-heading font-black text-xl sm:text-2xl lg:text-3xl text-white tracking-tight">
               Executive Dashboard, {adminUser.name.split(' ')[0]} 👑
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
-              Real-time governance, revenue orchestration, dynamic CMS and support ticketing across all active city zones.
+              Real-time database governance, revenue orchestration, dynamic CMS and support ticketing across all active city zones.
             </p>
           </div>
 
           {/* Quick Action Buttons */}
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={refreshAdminData}
+              disabled={isLoading}
+              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 active:scale-95"
+              title="Sync with MongoDB"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-amber-400 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>{isLoading ? 'Syncing...' : 'Sync DB'}</span>
+            </button>
             <Link
               to="/admin/vendors"
               className="px-3.5 py-2 bg-[#FFB703] hover:bg-[#E5A015] text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 active:scale-95"

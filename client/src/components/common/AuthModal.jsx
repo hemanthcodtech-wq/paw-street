@@ -17,12 +17,15 @@ import { useAuth } from '../../context/AuthContext';
 export default function AuthModal() {
   const { isAuthModalOpen, setIsAuthModalOpen, loginWithPhone, loginWithGoogle } = useAuth();
   
-  const [authMethod, setAuthMethod] = useState('phone'); // 'phone' | 'email'
-  const [phoneNumber, setPhoneNumber] = useState('9876543210');
-  const [emailAddress, setEmailAddress] = useState('aarav@thepawstreet.com');
+  const [authMethod, setAuthMethod] = useState('email'); // 'email' | 'phone'
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [emailAddress, setEmailAddress] = useState('');
+  const [password, setPassword] = useState('');
   const [step, setStep] = useState('input'); // 'input' | 'otp'
-  const [otpValues, setOtpValues] = useState(['4', '8', '2', '9']);
+  const [otpValues, setOtpValues] = useState(['', '', '', '']);
   const [timer, setTimer] = useState(30);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     let interval = null;

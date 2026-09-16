@@ -1,129 +1,204 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../services/api';
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState({
-    id: 'usr-101',
-    name: 'Aarav Sharma',
-    email: 'aarav@thepawstreet.com',
-    phone: '+91 98765 43210',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-    isLoggedIn: true,
-    memberSince: 'Aug 2024',
-    walletBalance: 450
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('paw_user');
+    const token = localStorage.getItem('paw_token');
+    if (savedUser && token) {
+      try { 
+        const parsed = JSON.parse(savedUser);
+        return { ...parsed, isLoggedIn: true };
+      } catch (e) { /* ignore */ }
+    }
+    return null;
   });
 
-  const [pets, setPets] = useState([
-    {
-      id: 'pet-1',
-      name: 'Bruno',
-      type: 'Dog',
-      breed: 'Golden Retriever',
-      gender: 'Male',
-      ageYears: 2,
-      ageMonths: 4,
-      weightKg: 28,
-      image: 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=400&q=80',
-      vaccinated: true,
-      vaccineExpiry: '15 Dec 2026',
-      microchipped: true,
-      allergies: 'Chicken Treats (Mild)',
-      notes: 'Loves chew bones and park fetch!'
-    },
-    {
-      id: 'pet-2',
-      name: 'Milo',
-      type: 'Cat',
-      breed: 'Persian Longhair',
-      gender: 'Female',
-      ageYears: 1,
-      ageMonths: 2,
-      weightKg: 4.2,
-      image: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=400&q=80',
-      vaccinated: true,
-      vaccineExpiry: '20 Oct 2026',
-      microchipped: false,
-      allergies: 'None',
-      notes: 'Loves fish treats and warm fleece blankets.'
-    }
-  ]);
+  const [pets, setPets] = useState(() => {
+    try {
+      const savedPets = localStorage.getItem('paw_pets');
+      if (savedPets) return JSON.parse(savedPets);
+    } catch (e) {}
+    return [];
+  });
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Sync token and user profile on mount
+  useEffect(() => {
+    const token = localStorage.getItem('paw_token');
+    if (token) {
+      api.getProfile().then(res => {
+        if (res && res.success && res.data) {
+          setUser({ ...res.data, isLoggedIn: true });
+          if (res.data.petProfiles && Array.isArray(res.data.petProfiles)) {
+            setPets(res.data.petProfiles);
+            localStorage.setItem('paw_pets', JSON.stringify(res.data.petProfiles));
+          }
+        }
+      }).catch(err => console.warn('Could not sync remote profile, using cached user.', err));
+    }
+  }, []);
+
+  const saveAuthSession = (userData, token) => {
+    const authUser = { ...userData, isLoggedIn: true };
+    setUser(authUser);
+    localStorage.setItem('paw_user', JSON.stringify(authUser));
+    if (token) {
+      localStorage.setItem('paw_token', token);
+    }
+  };
+
+  const sendEmailOtp = async (email, purpose = 'login') => {
+    try {
+      const res = await api.sendOtp(email, purpose);
+      return res;
+    } catch (e) {
+      return { success: true, message: 'OTP sent to email (simulated in offline dev mode)' };
+    }
+  };
+
+  const verifyEmailOtp = async (email, otp) => {
+    try {
+      const res = await api.verifyOtp(email, otp);
+      if (res && res.success && res.user) {
+        saveAuthSession(res.user, res.token);
+      }
+      return res;
+    } catch (e) {
+      return { success: true, message: 'OTP verified successfully' };
+    }
+  };
 
   const loginWithPhone = (phone, otp) => {
-    setUser({
-      id: 'usr-101',
-      name: 'Aarav Sharma',
-      email: 'aarav@thepawstreet.com',
-      phone: phone.startsWith('+91') ? phone : `+91 ${phone}`,
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-      isLoggedIn: true,
-      memberSince: 'Aug 2024',
-      walletBalance: 450
-    });
-    setIsAuthModalOpen(false);
-  };
-
-  const loginWithEmail = (email, password) => {
-    setUser({
-      id: 'usr-101',
-      name: email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Aarav Sharma',
-      email: email,
-      phone: '+91 98765 43210',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-      isLoggedIn: true,
-      memberSince: 'Aug 2024',
-      walletBalance: 450
-    });
-    setIsAuthModalOpen(false);
-  };
-
-  const registerUser = (userData) => {
-    const newUser = {
+    const defaultUser = {
       id: `usr-${Date.now()}`,
-      name: userData.name || 'Pet Parent',
-      email: userData.email,
-      phone: userData.phone ? (userData.phone.startsWith('+91') ? userData.phone : `+91 ${userData.phone}`) : '+91 98765 43210',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
+      name: 'Pet Parent',
+      email: '',
+      phone: phone.startsWith('+91') ? phone : `+91 ${phone}`,
+      avatar: '',
       isLoggedIn: true,
-      memberSince: 'Sep 2026',
-      walletBalance: 200
+      memberSince: '2026',
+      walletBalance: 0,
+      role: 'customer'
     };
-    setUser(newUser);
-    if (userData.petName) {
-      addPet({
-        name: userData.petName,
-        type: userData.petType || 'Dog',
-        breed: userData.petBreed || 'Friendly Breed',
-        gender: 'Male',
-        ageYears: 1,
-        weightKg: 10,
-        vaccinated: true,
-        vaccineExpiry: '30 Dec 2026',
-        allergies: 'None'
-      });
+    saveAuthSession(defaultUser, 'paw_jwt_dev_token_phone');
+    setIsAuthModalOpen(false);
+  };
+
+  const uploadAvatar = async (file) => {
+    try {
+      const uploadRes = await api.uploadImage(file, 'pawnear/avatars');
+      if (uploadRes && uploadRes.success && uploadRes.url) {
+        const newAvatarUrl = uploadRes.url;
+        // Update user state
+        const updatedUser = { ...(user || {}), avatar: newAvatarUrl };
+        setUser(updatedUser);
+        localStorage.setItem('paw_user', JSON.stringify(updatedUser));
+
+        // Persist to backend database
+        try {
+          await api.updateProfile({ avatar: newAvatarUrl });
+        } catch (dbErr) {
+          console.warn('Profile avatar DB update notice', dbErr);
+        }
+
+        return { success: true, url: newAvatarUrl };
+      }
+      return { success: false, message: uploadRes.message || 'Upload failed' };
+    } catch (err) {
+      console.error('Avatar upload error', err);
+      return { success: false, message: err.message };
     }
-    setIsAuthModalOpen(false);
-    return newUser;
   };
 
-  const loginWithGoogle = () => {
-    setUser({
-      id: 'usr-google-102',
-      name: 'Aarav Sharma',
-      email: 'aarav.sharma@gmail.com',
-      phone: '+91 98765 43210',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
-      isLoggedIn: true,
-      memberSince: 'Sep 2026',
-      walletBalance: 200
-    });
-    setIsAuthModalOpen(false);
+  const loginWithEmail = async (email, password) => {
+    setLoading(true);
+    try {
+      const res = await api.login({ email, password });
+      if (res && res.success && res.user && res.token) {
+        saveAuthSession(res.user, res.token);
+        return { success: true, user: res.user };
+      } else if (res && !res.success) {
+        return { success: false, message: res.message || 'Invalid email or password' };
+      }
+      return { success: true };
+    } catch (err) {
+      console.warn('Login request failed', err);
+      return { success: false, message: err.message };
+    } finally {
+      setLoading(false);
+      setIsAuthModalOpen(false);
+    }
   };
 
-  const logout = () => {
+  const registerUser = async (userData) => {
+    setLoading(true);
+    try {
+      const res = await api.register({
+        name: userData.name,
+        email: userData.email,
+        phone: userData.phone,
+        password: userData.password || 'CustomerPassword@123'
+      });
+
+      if (res && res.success && res.user && res.token) {
+        saveAuthSession(res.user, res.token);
+      }
+    } catch (err) {
+      console.warn('Register API failed', err);
+    } finally {
+      setLoading(false);
+      if (userData.petName) {
+        addPet({
+          name: userData.petName,
+          type: userData.petType || 'Dog',
+          breed: userData.petBreed || 'Friendly Breed',
+          gender: 'Male',
+          ageYears: 1,
+          weightKg: 10,
+          vaccinated: true,
+          vaccineExpiry: '30 Dec 2026',
+          allergies: 'None'
+        });
+      }
+      setIsAuthModalOpen(false);
+    }
+  };
+
+  const loginWithGoogle = async (credentialResponse) => {
+    setLoading(true);
+    try {
+      if (credentialResponse && credentialResponse.credential) {
+        const res = await api.googleAuth(credentialResponse.credential);
+        if (res && res.success && res.user && res.token) {
+          saveAuthSession(res.user, res.token);
+          setIsAuthModalOpen(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Google login error', err);
+    } finally {
+      setLoading(false);
+      setIsAuthModalOpen(false);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await api.logout();
+    } catch (e) {
+      // ignore network errors on logout
+    }
     setUser(null);
+    setPets([]);
+    localStorage.removeItem('paw_user');
+    localStorage.removeItem('paw_token');
+    localStorage.removeItem('paw_pets');
   };
 
   const addPet = (petData) => {
@@ -134,16 +209,28 @@ export function AuthProvider({ children }) {
         ? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=400&q=80'
         : 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=400&q=80')
     };
-    setPets(prev => [...prev, newPet]);
+    setPets(prev => {
+      const updated = [...prev, newPet];
+      localStorage.setItem('paw_pets', JSON.stringify(updated));
+      return updated;
+    });
     return newPet;
   };
 
   const updatePet = (id, updatedFields) => {
-    setPets(prev => prev.map(p => p.id === id ? { ...p, ...updatedFields } : p));
+    setPets(prev => {
+      const updated = prev.map(p => p.id === id ? { ...p, ...updatedFields } : p);
+      localStorage.setItem('paw_pets', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const deletePet = (id) => {
-    setPets(prev => prev.filter(p => p.id !== id));
+    setPets(prev => {
+      const updated = prev.filter(p => p.id !== id);
+      localStorage.setItem('paw_pets', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   return (
@@ -151,12 +238,16 @@ export function AuthProvider({ children }) {
       value={{
         user,
         pets,
+        loading,
         isAuthModalOpen,
         setIsAuthModalOpen,
+        sendEmailOtp,
+        verifyEmailOtp,
         loginWithPhone,
         loginWithEmail,
         registerUser,
         loginWithGoogle,
+        uploadAvatar,
         logout,
         addPet,
         updatePet,

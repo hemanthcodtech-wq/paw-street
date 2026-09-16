@@ -356,8 +356,10 @@ export default function VendorOrdersPage() {
         })}
 
         {filteredOrders.length === 0 && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400 text-xs">
-            No orders found in this tab.
+          <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center text-slate-400">
+            <ShoppingBag className="w-10 h-10 mx-auto mb-2.5 text-slate-300 stroke-[1.5]" />
+            <p className="font-bold text-slate-700 text-sm">No store orders or bookings found</p>
+            <p className="text-xs text-slate-400 mt-1">When pet parents place orders or schedule appointments with your store, they will stream in here in real time.</p>
           </div>
         )}
       </div>

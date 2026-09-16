@@ -195,6 +195,61 @@ export default function VendorStoreProfilePage() {
           </div>
         </div>
 
+        {/* Settlement & Banking Information */}
+        <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="font-heading font-black text-base text-slate-900 flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-emerald-500" />
+              <span>Settlement &amp; Payout Banking Account</span>
+            </h3>
+            <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-md border border-emerald-200">
+              Payout Active
+            </span>
+          </div>
+
+          <div className="space-y-3 text-xs">
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+              <div>
+                <span className="text-slate-400 block text-[10px] font-bold">ACCOUNT HOLDER NAME</span>
+                <span className="font-bold text-slate-900 text-xs">{vendor.bankDetails?.accountHolderName || vendor.fullName}</span>
+              </div>
+              <span className="text-emerald-600 font-bold text-[11px] flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Beneficiary
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+              <div>
+                <span className="text-slate-400 block text-[10px] font-bold">BANK NAME</span>
+                <span className="font-bold text-slate-900 text-xs">{vendor.bankDetails?.bankName || 'HDFC Bank Ltd.'}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+              <div>
+                <span className="text-slate-400 block text-[10px] font-bold">ACCOUNT NUMBER</span>
+                <span className="font-mono font-bold text-slate-900 text-xs">
+                  {vendor.bankDetails?.accountNumber
+                    ? `•••• •••• ${vendor.bankDetails.accountNumber.slice(-4)}`
+                    : '•••• •••• 4920'}
+                </span>
+              </div>
+              <span className="text-emerald-600 font-bold text-[11px] flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Verified
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+              <div>
+                <span className="text-slate-400 block text-[10px] font-bold">IFSC CODE &amp; UPI VPA</span>
+                <span className="font-mono font-bold text-slate-900 text-xs">
+                  {vendor.bankDetails?.ifscCode || 'HDFC0001248'} • {vendor.bankDetails?.upiId || `${vendor.email?.replace('@', '@ok') || 'ramarajukoyyalagadda123@okhdfcbank'}`}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Real-time Store Geolocation & Map Display */}
         <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">

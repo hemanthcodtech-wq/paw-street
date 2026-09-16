@@ -252,10 +252,10 @@ export default function ProductCard({ product, layout = 'grid' }) {
           
           <button
             onClick={() => {
-              if (inCartQty === 0) {
-                addToCart(product, defaultSize, 1);
+              const success = inCartQty > 0 ? true : addToCart(product, defaultSize, 1);
+              if (success) {
+                navigate('/checkout');
               }
-              navigate('/checkout');
             }}
             className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center active:scale-95 shadow-2xs"
           >

@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { api } from '../services/api';
 
 const AdminContext = createContext();
 
@@ -22,292 +23,23 @@ export function AdminProvider({ children }) {
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   // ----------------------------------------------------
   // 3.1 VENDOR GOVERNANCE STATE & DATA
   // ----------------------------------------------------
-  const [vendors, setVendors] = useState([
-    {
-      id: 'VND-101',
-      storeName: 'Paws & Whiskers Supermart',
-      fullName: 'Rajesh Sharma',
-      email: 'rajesh@pawswhiskers.in',
-      phone: '+91 98765 43210',
-      category: 'Pet Food, Accessories, Grooming & Healthcare',
-      businessTypes: ['Pet Store & Retail', 'Pet Grooming & Spa'],
-      status: 'approved', // 'approved', 'pending', 'rejected', 'suspended'
-      commissionRate: 12, // in %
-      onboardingFeePaid: true,
-      onboardingFeeAmount: 2499,
-      rating: 4.8,
-      totalOrders: 1420,
-      totalRevenue: 342500,
-      joinedDate: '15 Jan 2024',
-      // KYC Document Data
-      storeLicenceNumber: 'DL-PET-2024-88492',
-      panNumber: 'ABCPS1234D',
-      aadhaarNumber: 'XXXX-XXXX-8921',
-      location: {
-        address: 'Plot 42, Road No. 12, Banjara Hills',
-        city: 'Hyderabad',
-        pincode: '500034',
-        lat: 17.4156,
-        lng: 78.4350
-      },
-      photos: {
-        storeFront: '/images/hero_pets.jpg',
-        interior: '/images/cat_accessories.jpg',
-        logo: '/images/cat_food.jpg'
-      },
-      serviceDeliveryModes: {
-        homeServiceEnabled: true,
-        clinicVisitEnabled: true,
-        homeServiceFee: 99
-      },
-      submittedDate: '14 Jan 2024'
-    },
-    {
-      id: 'VND-102',
-      storeName: 'Royal Pet Grooming & Spa Hub',
-      fullName: 'Priya Mehra',
-      email: 'priya@royalpets.in',
-      phone: '+91 98112 34567',
-      category: 'Pet Grooming, Spa & Boarding',
-      businessTypes: ['Pet Grooming & Spa', 'Pet Boarding & Hostel'],
-      status: 'approved',
-      commissionRate: 15,
-      onboardingFeePaid: true,
-      onboardingFeeAmount: 2499,
-      rating: 4.9,
-      totalOrders: 890,
-      totalRevenue: 215000,
-      joinedDate: '28 Feb 2024',
-      storeLicenceNumber: 'DL-SPA-2024-44109',
-      panNumber: 'PRYPM8821K',
-      aadhaarNumber: 'XXXX-XXXX-4412',
-      location: {
-        address: '1st Floor, Indiranagar 100ft Road',
-        city: 'Bengaluru',
-        pincode: '560038',
-        lat: 12.9784,
-        lng: 77.6408
-      },
-      photos: {
-        storeFront: '/images/cat_grooming.jpg',
-        interior: '/images/promo_puppy.jpg',
-        logo: '/images/cat_grooming.jpg'
-      },
-      serviceDeliveryModes: {
-        homeServiceEnabled: true,
-        clinicVisitEnabled: true,
-        homeServiceFee: 149
-      },
-      submittedDate: '26 Feb 2024'
-    },
-    {
-      id: 'VND-103',
-      storeName: 'CityCare 24/7 Animal Hospital & Clinic',
-      fullName: 'Dr. Arjun Varma',
-      email: 'dr.arjun@citycarevet.com',
-      phone: '+91 99445 67890',
-      category: 'Veterinary Clinic, Diagnostics & Pet Pharmacy',
-      businessTypes: ['Veterinary Clinic & Hospital'],
-      status: 'pending', // Pending Admin Review
-      commissionRate: 10,
-      onboardingFeePaid: true,
-      onboardingFeeAmount: 2499,
-      rating: 4.7,
-      totalOrders: 0,
-      totalRevenue: 0,
-      joinedDate: 'Pending',
-      storeLicenceNumber: 'VET-MED-2024-90218',
-      panNumber: 'ARJVP5521L',
-      aadhaarNumber: 'XXXX-XXXX-9011',
-      location: {
-        address: 'Shop 14, High Street, Jubilee Hills',
-        city: 'Hyderabad',
-        pincode: '500033',
-        lat: 17.4319,
-        lng: 78.4073
-      },
-      photos: {
-        storeFront: '/images/cat_clinic.jpg',
-        interior: '/images/cat_medicine.jpg',
-        logo: '/images/cat_clinic.jpg'
-      },
-      serviceDeliveryModes: {
-        homeServiceEnabled: true,
-        clinicVisitEnabled: true,
-        homeServiceFee: 199
-      },
-      submittedDate: 'Yesterday at 4:30 PM',
-      reviewNotes: 'High quality vet clinic with all medical licenses attached. Requires verification.'
-    },
-    {
-      id: 'VND-104',
-      storeName: 'FurryTails Pet Bakery & Treats',
-      fullName: 'Ananya Deshmukh',
-      email: 'ananya@furrytails.co',
-      phone: '+91 97654 32109',
-      category: 'Organic Pet Treats, Bakery & Food',
-      businessTypes: ['Pet Store & Retail'],
-      status: 'pending',
-      commissionRate: 14,
-      onboardingFeePaid: true,
-      onboardingFeeAmount: 2499,
-      rating: 4.6,
-      totalOrders: 0,
-      totalRevenue: 0,
-      joinedDate: 'Pending',
-      storeLicenceNumber: 'FSSAI-PET-889123',
-      panNumber: 'ANYPD4419M',
-      aadhaarNumber: 'XXXX-XXXX-1144',
-      location: {
-        address: 'B-12, Koregaon Park Plaza',
-        city: 'Pune',
-        pincode: '411001',
-        lat: 18.5362,
-        lng: 73.8940
-      },
-      photos: {
-        storeFront: '/images/promo_puppy.jpg',
-        interior: '/images/cat_food.jpg',
-        logo: '/images/promo_puppy.jpg'
-      },
-      serviceDeliveryModes: {
-        homeServiceEnabled: false,
-        clinicVisitEnabled: false,
-        homeServiceFee: 0
-      },
-      submittedDate: 'Today at 10:15 AM',
-      reviewNotes: 'Organic bakery applicant with valid FSSAI trade license.'
-    },
-    {
-      id: 'VND-105',
-      storeName: 'Canine Haven Boarding & Resort',
-      fullName: 'Suresh Menon',
-      email: 'suresh@caninehaven.in',
-      phone: '+91 94470 12345',
-      category: 'Pet Boarding, Daycare & Training',
-      businessTypes: ['Pet Boarding & Hostel'],
-      status: 'suspended',
-      commissionRate: 15,
-      onboardingFeePaid: true,
-      onboardingFeeAmount: 2499,
-      rating: 3.4,
-      totalOrders: 210,
-      totalRevenue: 68000,
-      joinedDate: '10 Dec 2023',
-      storeLicenceNumber: 'DL-BRD-2023-11092',
-      panNumber: 'SURPM9910Q',
-      aadhaarNumber: 'XXXX-XXXX-6677',
-      location: {
-        address: 'Farm Road 4, Gachibowli Outer Ring',
-        city: 'Hyderabad',
-        pincode: '500032',
-        lat: 17.4401,
-        lng: 78.3489
-      },
-      photos: {
-        storeFront: '/images/cat_boarding.jpg',
-        interior: '/images/promo_puppy.jpg',
-        logo: '/images/cat_boarding.jpg'
-      },
-      serviceDeliveryModes: {
-        homeServiceEnabled: false,
-        clinicVisitEnabled: true,
-        homeServiceFee: 0
-      },
-      submittedDate: '08 Dec 2023',
-      suspensionReason: 'Multiple customer complaints regarding unhygienic conditions.'
-    }
-  ]);
+  const [vendors, setVendors] = useState([]);
 
   // ----------------------------------------------------
   // 3.1 PRODUCT & SERVICE GOVERNANCE STATE & DATA
   // ----------------------------------------------------
-  const [productsGovernance, setProductsGovernance] = useState([
-    {
-      id: 'PRD-GOV-01',
-      title: 'Royal Canin Maxi Adult Dog Food (15kg)',
-      vendorId: 'VND-101',
-      vendorName: 'Paws & Whiskers Supermart',
-      category: 'Dog Food',
-      price: 6899,
-      mrp: 7500,
-      stock: 45,
-      image: '/images/prod_drools.jpg',
-      status: 'approved', // 'approved', 'pending_approval', 'rejected'
-      submittedDate: '01 Mar 2024',
-      type: 'product'
-    },
-    {
-      id: 'PRD-GOV-02',
-      title: 'Pedigree Pro High Protein Puppy Dry Food (10kg)',
-      vendorId: 'VND-101',
-      vendorName: 'Paws & Whiskers Supermart',
-      category: 'Dog Food',
-      price: 3299,
-      mrp: 3800,
-      stock: 28,
-      image: '/images/prod_pedigree.jpg',
-      status: 'approved',
-      submittedDate: '02 Mar 2024',
-      type: 'product'
-    },
-    {
-      id: 'PRD-GOV-03',
-      title: 'FurryTails Organic Salmon & Blueberry Crunchy Dog Cookies (400g)',
-      vendorId: 'VND-104',
-      vendorName: 'FurryTails Pet Bakery & Treats',
-      category: 'Pet Treats',
-      price: 449,
-      mrp: 599,
-      stock: 120,
-      image: '/images/cat_food.jpg',
-      status: 'pending_approval', // Pending admin approval
-      submittedDate: 'Today at 11:20 AM',
-      type: 'product',
-      notes: 'New artisan organic treat line. Packaging labels verified.'
-    },
-    {
-      id: 'PRD-GOV-04',
-      title: 'Full Body Hydrotherapy & Medicated Herbal Spa for Dogs',
-      vendorId: 'VND-102',
-      vendorName: 'Royal Pet Grooming & Spa Hub',
-      category: 'Pet Grooming & Spa',
-      price: 1899,
-      mrp: 2400,
-      stock: 999, // service
-      image: '/images/cat_grooming.jpg',
-      status: 'pending_approval',
-      submittedDate: 'Yesterday at 3:15 PM',
-      type: 'service',
-      serviceModes: ['At-Home Service', 'Clinic / Spa Visit'],
-      notes: 'Specialized hydrotherapy treatment package for senior dogs with arthritis.'
-    },
-    {
-      id: 'PRD-GOV-05',
-      title: 'Generic Unbranded Antibiotic Eye Drops (Unregistered)',
-      vendorId: 'VND-105',
-      vendorName: 'Canine Haven Boarding & Resort',
-      category: 'Veterinary Pharmacy',
-      price: 150,
-      mrp: 200,
-      stock: 15,
-      image: '/images/cat_medicine.jpg',
-      status: 'rejected',
-      submittedDate: '12 Feb 2024',
-      type: 'product',
-      rejectionReason: 'Prescription antibiotics cannot be sold without drug license & valid batch number.'
-    }
-  ]);
+  const [productsGovernance, setProductsGovernance] = useState([]);
 
   // ----------------------------------------------------
   // 3.2 REVENUE & BUSINESS CONTROLS STATE & DATA
   // ----------------------------------------------------
   const [businessSettings, setBusinessSettings] = useState({
-    // Category-wise commission percentage
     categoryCommissions: {
       'Pet Food & Nutrition': 10,
       'Pet Accessories & Toys': 15,
@@ -316,15 +48,13 @@ export function AdminProvider({ children }) {
       'Pet Boarding & Daycare': 15,
       'Pharmacy & Medicines': 8
     },
-    // Delivery pricing rules
     deliveryPricing: {
       baseDeliveryFee: 49,
       freeDeliveryThreshold: 499,
-      perKmRate: 7, // ₹ per km after 5km
+      perKmRate: 7,
       rainSurgeMultiplier: 1.2,
       nightSurgeFee: 30
     },
-    // Vendor onboarding fees
     onboardingFees: {
       vendorRegistrationDeposit: 2499,
       annualPlatformTechFee: 4999,
@@ -335,8 +65,8 @@ export function AdminProvider({ children }) {
 
   // Platform Financial Metrics
   const [revenueMetrics, setRevenueMetrics] = useState({
-    totalGmv: 1845920, // Gross Merchandise Value
-    totalNetPlatformProfit: 248900, // Commissions & Platform fees
+    totalGmv: 1845920,
+    totalNetPlatformProfit: 248900,
     totalOrdersCount: 4219,
     totalVendorPayoutsDisbursed: 1498020,
     pendingPayoutsQueue: 99000,
@@ -353,7 +83,7 @@ export function AdminProvider({ children }) {
       amount: 48920,
       period: '25 Aug - 31 Aug',
       ordersCount: 94,
-      status: 'pending', // 'pending', 'processed', 'on_hold'
+      status: 'pending',
       bankAccount: 'HDFC Bank ••••••4920'
     },
     {
@@ -382,14 +112,12 @@ export function AdminProvider({ children }) {
   // 3.3 PLATFORM CONTROL & DYNAMIC CMS STATE & DATA
   // ----------------------------------------------------
   const [platformContent, setPlatformContent] = useState({
-    // Dynamic Top Announcement Bar
     announcementBar: {
       enabled: true,
       text: '🎉 PAW FEST 2026: Flat 20% OFF on all Pet Food & Free Vet Consultation on orders above ₹999! Code: PAWFEST20',
       linkText: 'Claim Offer',
       linkUrl: '/products'
     },
-    // Hero Promo Carousel Banners
     heroBanners: [
       {
         id: 'BNR-01',
@@ -431,7 +159,6 @@ export function AdminProvider({ children }) {
         order: 3
       }
     ],
-    // Featured Sections on Homepage
     featuredSections: {
       flashDealsEnabled: true,
       popularNearYouEnabled: true,
@@ -439,7 +166,6 @@ export function AdminProvider({ children }) {
       trendingCategoriesEnabled: true,
       emergencyVetBannerEnabled: true
     },
-    // Active Promo Coupons
     promoCoupons: [
       {
         id: 'CPN-01',
@@ -484,7 +210,7 @@ export function AdminProvider({ children }) {
       avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
       activeTickets: 3,
       resolvedTickets: 142,
-      status: 'online', // 'online', 'busy', 'offline'
+      status: 'online',
       rating: 4.9
     },
     {
@@ -513,77 +239,105 @@ export function AdminProvider({ children }) {
     }
   ]);
 
-  const [supportTickets, setSupportTickets] = useState([
-    {
-      id: 'TCK-1089',
-      customerName: 'Anand Roy',
-      customerPhone: '+91 98881 22334',
-      type: 'Customer Issue',
-      category: 'Order Delay & Live Tracking',
-      orderId: 'ORD-99042',
-      priority: 'high', // 'urgent', 'high', 'medium', 'low'
-      status: 'open', // 'open', 'in_progress', 'resolved', 'escalated'
-      assignedTo: 'STF-001',
-      assignedName: 'Sneha Kulkarni',
-      createdAt: '12 mins ago',
-      description: 'Order ORD-99042 is showing out for delivery for 40 mins. Rider not picking up call.',
-      notes: []
-    },
-    {
-      id: 'TCK-1088',
-      customerName: 'Dr. Arjun Varma (Store Manager)',
-      customerPhone: '+91 99445 67890',
-      type: 'Vendor Query',
-      category: 'Onboarding KYC Audit',
-      orderId: 'VND-103',
-      priority: 'urgent',
-      status: 'in_progress',
-      assignedTo: 'STF-002',
-      assignedName: 'Aditya Verma',
-      createdAt: '45 mins ago',
-      description: 'Submitted clinic registration documents. Requesting verification expedited for emergency weekend listings.',
-      notes: ['PAN card verified against income tax database.', 'Awaiting trade license cross-check.']
-    },
-    {
-      id: 'TCK-1087',
-      customerName: 'Pooja Hegde',
-      customerPhone: '+91 98119 55667',
-      type: 'Customer Issue',
-      category: 'Prescription Verification',
-      orderId: 'ORD-98810',
-      priority: 'medium',
-      status: 'in_progress',
-      assignedTo: 'STF-003',
-      assignedName: 'Dr. Meenakshi Iyer',
-      createdAt: '2 hours ago',
-      description: 'Customer uploaded handwritten vet prescription for medicated ear drops. Verification needed before dispatch.',
-      notes: ['Doctor signature verified. Dosages match product packaging.']
-    },
-    {
-      id: 'TCK-1086',
-      customerName: 'Sameer Joshi',
-      customerPhone: '+91 97711 33221',
-      type: 'Customer Issue',
-      category: 'Damaged Item Refund',
-      orderId: 'ORD-98722',
-      priority: 'high',
-      status: 'resolved',
-      assignedTo: 'STF-001',
-      assignedName: 'Sneha Kulkarni',
-      createdAt: 'Yesterday',
-      description: 'Dog food bag arrived torn during express delivery. Instant UPI refund requested.',
-      resolution: 'Refund of ₹1,299 initiated via UPI reference REF-889102. Vendor informed of packaging standard.'
+  const [supportTickets, setSupportTickets] = useState([]);
+
+  // ====================================================
+  // FETCH ALL ADMIN DATA DIRECTLY FROM MONGODB ATLAS
+  // ====================================================
+  const fetchAdminData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // 1. Fetch Executive Metrics
+      const metricsRes = await api.getAdminMetrics();
+      if (metricsRes && metricsRes.success && metricsRes.metrics) {
+        setRevenueMetrics(prev => ({
+          ...prev,
+          ...metricsRes.metrics
+        }));
+      }
+
+      // 2. Fetch Vendors from DB
+      const vendorsRes = await api.getAdminVendors();
+      if (vendorsRes && vendorsRes.success && Array.isArray(vendorsRes.vendors)) {
+        if (vendorsRes.vendors.length > 0) {
+          setVendors(vendorsRes.vendors);
+        }
+      }
+
+      // 3. Fetch Products from DB
+      const productsRes = await api.getAdminProducts();
+      if (productsRes && productsRes.success && Array.isArray(productsRes.products)) {
+        if (productsRes.products.length > 0) {
+          setProductsGovernance(productsRes.products);
+        }
+      }
+
+      // 4. Fetch Platform CMS from DB
+      const cmsRes = await api.getAdminCms();
+      if (cmsRes && cmsRes.success && cmsRes.cms) {
+        const cms = cmsRes.cms;
+        if (cms.topAnnouncement) {
+          setPlatformContent(prev => ({
+            ...prev,
+            announcementBar: {
+              enabled: cms.topAnnouncement.isActive !== false,
+              text: cms.topAnnouncement.text || prev.announcementBar.text,
+              linkText: 'Claim Offer',
+              linkUrl: cms.topAnnouncement.link || '/products'
+            }
+          }));
+        }
+        if (Array.isArray(cms.heroBanners) && cms.heroBanners.length > 0) {
+          setPlatformContent(prev => ({
+            ...prev,
+            heroBanners: cms.heroBanners.map(b => ({
+              id: b.id,
+              title: b.title,
+              subtitle: b.subTitle || '',
+              badge: b.tag || '⚡ FEATURED',
+              tagline: 'PAW QUICK',
+              ctaText: 'Explore',
+              ctaLink: b.link || '/products',
+              bgGradient: b.bgColor || 'from-amber-500 via-amber-600 to-orange-600',
+              image: b.image || '/images/hero_pets.jpg',
+              isActive: b.isActive !== false
+            }))
+          }));
+        }
+      }
+
+      // 5. Fetch Business Settings from DB
+      const bizRes = await api.getAdminBusinessSettings();
+      if (bizRes && bizRes.success && bizRes.businessSettings) {
+        setBusinessSettings(bizRes.businessSettings);
+      }
+
+      // 6. Fetch Support Tickets from DB
+      const supportRes = await api.getAdminSupport();
+      if (supportRes && supportRes.success && Array.isArray(supportRes.tickets)) {
+        if (supportRes.tickets.length > 0) {
+          setSupportTickets(supportRes.tickets);
+        }
+      }
+    } catch (err) {
+      console.warn('Live admin data load notice:', err.message);
+    } finally {
+      setIsLoading(false);
     }
-  ]);
+  }, []);
+
+  useEffect(() => {
+    fetchAdminData();
+  }, [fetchAdminData]);
 
   // ----------------------------------------------------
-  // ACTION HANDLERS (3.1, 3.2, 3.3, 3.4)
+  // ACTION HANDLERS WITH DIRECT DATABASE PERSISTENCE
   // ----------------------------------------------------
 
   // 3.1 Vendor Governance Actions
-  const approveVendor = (vendorId, commissionRate = 12) => {
+  const approveVendor = async (vendorId, commissionRate = 12) => {
     setVendors(prev => prev.map(v => {
-      if (v.id === vendorId) {
+      if (v.id === vendorId || v._id === vendorId) {
         return {
           ...v,
           status: 'approved',
@@ -593,11 +347,19 @@ export function AdminProvider({ children }) {
       }
       return v;
     }));
+
+    try {
+      await api.approveVendor(vendorId, commissionRate);
+      const metricsRes = await api.getAdminMetrics();
+      if (metricsRes?.success) setRevenueMetrics(prev => ({ ...prev, ...metricsRes.metrics }));
+    } catch (err) {
+      console.warn('Vendor approval sync notice:', err.message);
+    }
   };
 
-  const rejectVendor = (vendorId, reason = 'Documents did not meet compliance criteria') => {
+  const rejectVendor = async (vendorId, reason = 'Documents did not meet compliance criteria') => {
     setVendors(prev => prev.map(v => {
-      if (v.id === vendorId) {
+      if (v.id === vendorId || v._id === vendorId) {
         return {
           ...v,
           status: 'rejected',
@@ -606,75 +368,132 @@ export function AdminProvider({ children }) {
       }
       return v;
     }));
+
+    try {
+      await api.rejectVendor(vendorId, reason);
+      const metricsRes = await api.getAdminMetrics();
+      if (metricsRes?.success) setRevenueMetrics(prev => ({ ...prev, ...metricsRes.metrics }));
+    } catch (err) {
+      console.warn('Vendor rejection sync notice:', err.message);
+    }
   };
 
-  const toggleVendorStatus = (vendorId) => {
+  const toggleVendorStatus = async (vendorId) => {
     setVendors(prev => prev.map(v => {
-      if (v.id === vendorId) {
+      if (v.id === vendorId || v._id === vendorId) {
         const nextStatus = v.status === 'approved' ? 'suspended' : 'approved';
         return { ...v, status: nextStatus };
       }
       return v;
     }));
+
+    try {
+      await api.toggleVendorStatus(vendorId);
+    } catch (err) {
+      console.warn('Vendor status toggle sync notice:', err.message);
+    }
   };
 
-  const updateVendorCommission = (vendorId, newRate) => {
+  const updateVendorCommission = async (vendorId, newRate) => {
     setVendors(prev => prev.map(v => {
-      if (v.id === vendorId) {
+      if (v.id === vendorId || v._id === vendorId) {
         return { ...v, commissionRate: Number(newRate) };
       }
       return v;
     }));
+
+    try {
+      await api.updateVendorCommission(vendorId, newRate);
+    } catch (err) {
+      console.warn('Vendor commission update sync notice:', err.message);
+    }
   };
 
   // 3.1 Product Governance Actions
-  const approveProduct = (productId) => {
+  const approveProduct = async (productId) => {
     setProductsGovernance(prev => prev.map(p => {
-      if (p.id === productId) {
+      if (p.id === productId || p._id === productId) {
         return { ...p, status: 'approved' };
       }
       return p;
     }));
+
+    try {
+      await api.approveProduct(productId);
+      const metricsRes = await api.getAdminMetrics();
+      if (metricsRes?.success) setRevenueMetrics(prev => ({ ...prev, ...metricsRes.metrics }));
+    } catch (err) {
+      console.warn('Product approval sync notice:', err.message);
+    }
   };
 
-  const rejectProduct = (productId, reason) => {
+  const rejectProduct = async (productId, reason) => {
     setProductsGovernance(prev => prev.map(p => {
-      if (p.id === productId) {
+      if (p.id === productId || p._id === productId) {
         return { ...p, status: 'rejected', rejectionReason: reason || 'Product details violated quality policy.' };
       }
       return p;
     }));
+
+    try {
+      await api.rejectProduct(productId, reason);
+      const metricsRes = await api.getAdminMetrics();
+      if (metricsRes?.success) setRevenueMetrics(prev => ({ ...prev, ...metricsRes.metrics }));
+    } catch (err) {
+      console.warn('Product rejection sync notice:', err.message);
+    }
   };
 
   // 3.2 Revenue Controls Actions
-  const updateCategoryCommission = (categoryName, rate) => {
-    setBusinessSettings(prev => ({
-      ...prev,
+  const updateCategoryCommission = async (categoryName, rate) => {
+    const updated = {
+      ...businessSettings,
       categoryCommissions: {
-        ...prev.categoryCommissions,
+        ...businessSettings.categoryCommissions,
         [categoryName]: Number(rate)
       }
-    }));
+    };
+    setBusinessSettings(updated);
+
+    try {
+      await api.updateAdminBusinessSettings(updated);
+    } catch (err) {
+      console.warn('Commission update sync notice:', err.message);
+    }
   };
 
-  const updateDeliveryPricing = (field, value) => {
-    setBusinessSettings(prev => ({
-      ...prev,
+  const updateDeliveryPricing = async (field, value) => {
+    const updated = {
+      ...businessSettings,
       deliveryPricing: {
-        ...prev.deliveryPricing,
+        ...businessSettings.deliveryPricing,
         [field]: Number(value)
       }
-    }));
+    };
+    setBusinessSettings(updated);
+
+    try {
+      await api.updateAdminBusinessSettings(updated);
+    } catch (err) {
+      console.warn('Delivery pricing update sync notice:', err.message);
+    }
   };
 
-  const updateOnboardingFees = (field, value) => {
-    setBusinessSettings(prev => ({
-      ...prev,
+  const updateOnboardingFees = async (field, value) => {
+    const updated = {
+      ...businessSettings,
       onboardingFees: {
-        ...prev.onboardingFees,
+        ...businessSettings.onboardingFees,
         [field]: typeof value === 'boolean' ? value : Number(value)
       }
-    }));
+    };
+    setBusinessSettings(updated);
+
+    try {
+      await api.updateAdminBusinessSettings(updated);
+    } catch (err) {
+      console.warn('Onboarding fees update sync notice:', err.message);
+    }
   };
 
   const processPayout = (payoutId) => {
@@ -687,16 +506,30 @@ export function AdminProvider({ children }) {
   };
 
   // 3.3 Platform CMS Actions
-  const updateAnnouncementBar = (enabled, text, linkText, linkUrl) => {
-    setPlatformContent(prev => ({
-      ...prev,
+  const updateAnnouncementBar = async (enabled, text, linkText, linkUrl) => {
+    const updated = {
+      ...platformContent,
       announcementBar: {
         enabled,
         text,
         linkText,
         linkUrl
       }
-    }));
+    };
+    setPlatformContent(updated);
+
+    try {
+      await api.updateAdminCms({
+        topAnnouncement: {
+          text,
+          badge: '⚡ FLASH SALE',
+          link: linkUrl,
+          isActive: enabled
+        }
+      });
+    } catch (err) {
+      console.warn('Announcement bar update sync notice:', err.message);
+    }
   };
 
   const toggleFeaturedSection = (sectionKey) => {
@@ -709,26 +542,72 @@ export function AdminProvider({ children }) {
     }));
   };
 
-  const addHeroBanner = (banner) => {
+  const addHeroBanner = async (banner) => {
     const newId = `BNR-${String(platformContent.heroBanners.length + 1).padStart(2, '0')}`;
-    setPlatformContent(prev => ({
-      ...prev,
-      heroBanners: [...prev.heroBanners, { ...banner, id: newId, isActive: true, order: prev.heroBanners.length + 1 }]
-    }));
+    const newBanner = { ...banner, id: newId, isActive: true, order: platformContent.heroBanners.length + 1 };
+    const updatedBanners = [...platformContent.heroBanners, newBanner];
+    setPlatformContent(prev => ({ ...prev, heroBanners: updatedBanners }));
+
+    try {
+      await api.updateAdminCms({
+        heroBanners: updatedBanners.map(b => ({
+          id: b.id,
+          title: b.title,
+          subTitle: b.subtitle,
+          tag: b.badge,
+          image: b.image,
+          link: b.ctaLink,
+          bgColor: b.bgGradient,
+          isActive: b.isActive
+        }))
+      });
+    } catch (err) {
+      console.warn('Add banner sync notice:', err.message);
+    }
   };
 
-  const toggleHeroBannerStatus = (bannerId) => {
-    setPlatformContent(prev => ({
-      ...prev,
-      heroBanners: prev.heroBanners.map(b => b.id === bannerId ? { ...b, isActive: !b.isActive } : b)
-    }));
+  const toggleHeroBannerStatus = async (bannerId) => {
+    const updatedBanners = platformContent.heroBanners.map(b => b.id === bannerId ? { ...b, isActive: !b.isActive } : b);
+    setPlatformContent(prev => ({ ...prev, heroBanners: updatedBanners }));
+
+    try {
+      await api.updateAdminCms({
+        heroBanners: updatedBanners.map(b => ({
+          id: b.id,
+          title: b.title,
+          subTitle: b.subtitle,
+          tag: b.badge,
+          image: b.image,
+          link: b.ctaLink,
+          bgColor: b.bgGradient,
+          isActive: b.isActive
+        }))
+      });
+    } catch (err) {
+      console.warn('Toggle banner sync notice:', err.message);
+    }
   };
 
-  const deleteHeroBanner = (bannerId) => {
-    setPlatformContent(prev => ({
-      ...prev,
-      heroBanners: prev.heroBanners.filter(b => b.id !== bannerId)
-    }));
+  const deleteHeroBanner = async (bannerId) => {
+    const updatedBanners = platformContent.heroBanners.filter(b => b.id !== bannerId);
+    setPlatformContent(prev => ({ ...prev, heroBanners: updatedBanners }));
+
+    try {
+      await api.updateAdminCms({
+        heroBanners: updatedBanners.map(b => ({
+          id: b.id,
+          title: b.title,
+          subTitle: b.subtitle,
+          tag: b.badge,
+          image: b.image,
+          link: b.ctaLink,
+          bgColor: b.bgGradient,
+          isActive: b.isActive
+        }))
+      });
+    } catch (err) {
+      console.warn('Delete banner sync notice:', err.message);
+    }
   };
 
   const addPromoCoupon = (coupon) => {
@@ -760,12 +639,12 @@ export function AdminProvider({ children }) {
     }]);
   };
 
-  const assignTicketToStaff = (ticketId, staffId) => {
+  const assignTicketToStaff = async (ticketId, staffId) => {
     const staffMember = supportStaff.find(s => s.id === staffId);
     if (!staffMember) return;
 
     setSupportTickets(prev => prev.map(t => {
-      if (t.id === ticketId) {
+      if (t.id === ticketId || t._id === ticketId) {
         return {
           ...t,
           assignedTo: staffId,
@@ -782,11 +661,20 @@ export function AdminProvider({ children }) {
       }
       return s;
     }));
+
+    try {
+      await api.updateAdminTicket(ticketId, {
+        assignedStaff: { id: staffId, name: staffMember.name },
+        status: 'in_progress'
+      });
+    } catch (err) {
+      console.warn('Assign ticket sync notice:', err.message);
+    }
   };
 
-  const updateTicketStatus = (ticketId, status, resolutionNotes = '') => {
+  const updateTicketStatus = async (ticketId, status, resolutionNotes = '') => {
     setSupportTickets(prev => prev.map(t => {
-      if (t.id === ticketId) {
+      if (t.id === ticketId || t._id === ticketId) {
         return {
           ...t,
           status,
@@ -795,6 +683,12 @@ export function AdminProvider({ children }) {
       }
       return t;
     }));
+
+    try {
+      await api.updateAdminTicket(ticketId, { status, resolution: resolutionNotes });
+    } catch (err) {
+      console.warn('Update ticket status sync notice:', err.message);
+    }
   };
 
   // Computed Quick Counters for Badges & Header
@@ -809,6 +703,9 @@ export function AdminProvider({ children }) {
         setAdminUser,
         isAuthenticated,
         setIsAuthenticated,
+        isLoading,
+        isSaving,
+        refreshAdminData: fetchAdminData,
         // 3.1 Vendor Governance
         vendors,
         approveVendor,
