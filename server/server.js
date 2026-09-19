@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
 const path = require('path');
+const mongoose = require('mongoose');
 
 // Load environment configuration
 dotenv.config({ path: path.join(__dirname, '.env') });
@@ -64,6 +65,7 @@ app.get('/', (req, res) => {
 
 // Health Check Endpoint
 app.get('/api/health', (req, res) => {
+  const dbStates = ['Disconnected', 'Connected', 'Connecting', 'Disconnecting'];
   res.json({
     success: true,
     status: 'ONLINE',
@@ -71,7 +73,7 @@ app.get('/api/health', (req, res) => {
     version: '1.0.0',
     timestamp: new Date().toISOString(),
     features: {
-      mongodb: 'Connected',
+      mongodb: dbStates[mongoose.connection.readyState] || 'Unknown',
       cloudinary: 'Enabled',
       razorpay: 'Enabled',
       nodemailerOtp: 'Enabled',
@@ -91,13 +93,15 @@ app.use(async (req, res, next) => {
 });
 
 // Mount Application Routes
+const { protect, authorizeRoles } = require('./middleware/authMiddleware');
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
+app.use('/api/platform', require('./routes/platformRoutes'));
 app.use('/api/vendors', require('./routes/vendorRoutes'));
 app.use('/api/orders', require('./routes/orderRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/delivery', require('./routes/deliveryRoutes'));
-app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/admin', protect, authorizeRoles('admin'), require('./routes/adminRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
 
 // Centralized Error & 404 Handlers

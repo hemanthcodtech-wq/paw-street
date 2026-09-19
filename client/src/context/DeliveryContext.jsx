@@ -32,11 +32,12 @@ export function DeliveryProvider({ children }) {
     currentZone: 'Jubilee Hills & Banjara Hills, Hyderabad'
   });
 
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('paw_rider_token'));
 
   // Fetch Live Delivery Profile from Backend
   const fetchDeliveryData = React.useCallback(async () => {
     try {
+      if (!localStorage.getItem('paw_rider_token')) return;
       const res = await api.getDeliveryProfile();
       if (res && res.success && res.rider) {
         setRider(prev => ({ ...prev, ...res.rider, id: res.rider._id || prev.id }));

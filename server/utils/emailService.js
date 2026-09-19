@@ -43,6 +43,8 @@ const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 const sendVendorWelcomeEmail = async (vendor, password, pdfUrl, pdfBuffer) => {
   const transporter = await createTransporter();
   const loginUrl = `${CLIENT_URL}/vendor/login`;
+  const vendorId = vendor._id ? vendor._id.toString() : '';
+  const applicationId = vendorId ? `APP-VN-${vendorId.slice(-8).toUpperCase()}` : `APP-VN-${Date.now()}`;
 
   // Bank details extraction
   const bankAcc = vendor.bankDetails?.accountNumber || '';
@@ -78,6 +80,14 @@ const sendVendorWelcomeEmail = async (vendor, password, pdfUrl, pdfBuffer) => {
           <h3 style="margin:0 0 14px;color:#92400e;font-size:13px;text-transform:uppercase;letter-spacing:1px;font-weight:900;">Your Vendor Portal Credentials</h3>
           <table style="width:100%;border-collapse:collapse;">
             <tr>
+              <td style="padding:6px 0;font-size:14px;color:#78350f;width:150px;"><strong>Vendor ID:</strong></td>
+              <td style="padding:6px 0;font-size:14px;color:#0f172a;font-weight:900;font-family:monospace;">${vendorId}</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;font-size:14px;color:#78350f;"><strong>Application ID:</strong></td>
+              <td style="padding:6px 0;font-size:14px;color:#0f172a;font-weight:900;font-family:monospace;">${applicationId}</td>
+            </tr>
+            <tr>
               <td style="padding:6px 0;font-size:14px;color:#78350f;width:150px;"><strong>Registered Email:</strong></td>
               <td style="padding:6px 0;font-size:14px;color:#0284c7;font-weight:800;">${vendor.email}</td>
             </tr>
@@ -88,7 +98,7 @@ const sendVendorWelcomeEmail = async (vendor, password, pdfUrl, pdfBuffer) => {
               </td>
             </tr>
           </table>
-          <p style="margin:14px 0 0;font-size:12.5px;color:#b45309;line-height:1.5;">Tip: Please sign in below using this temporary password. You can reset or update your permanent password anytime inside your vendor profile.</p>
+          <p style="margin:14px 0 0;font-size:12.5px;color:#b45309;line-height:1.5;">Tip: Please sign in below using this temporary password. Keep your Vendor ID for support and payout queries. You can reset or update your permanent password anytime inside your vendor profile.</p>
         </div>
 
         <!-- Action Button -->
@@ -99,8 +109,8 @@ const sendVendorWelcomeEmail = async (vendor, password, pdfUrl, pdfBuffer) => {
         <!-- Attached File Notice -->
         <div style="background:#f1f5f9;border:1.5px solid #cbd5e1;border-radius:12px;padding:16px 20px;margin-bottom:28px;display:flex;align-items:center;">
           <div>
-            <p style="margin:0;font-size:13.5px;font-weight:800;color:#0f172a;">Official Application &amp; Approval Certificate (Attached)</p>
-            <p style="margin:4px 0 0;font-size:12.5px;color:#64748b;">We have attached a PDF copy of your approved application form and certificate directly to this email for your records.</p>
+            <p style="margin:0;font-size:13.5px;font-weight:800;color:#0f172a;">Official Application, Vendor ID &amp; Approval Certificate (Attached)</p>
+            <p style="margin:4px 0 0;font-size:12.5px;color:#64748b;">We have attached a PDF copy of your approved onboarding form, Vendor ID, credentials, KYC summary, payout details, and approval certificate directly to this email for your records.</p>
             ${pdfUrl ? `<p style="margin:8px 0 0;"><a href="${pdfUrl}" target="_blank" style="color:#0284c7;font-weight:800;font-size:13px;text-decoration:underline;">Click here to View / Download Certificate Online &rarr;</a></p>` : ''}
           </div>
         </div>
@@ -134,6 +144,14 @@ const sendVendorWelcomeEmail = async (vendor, password, pdfUrl, pdfBuffer) => {
               <tr style="border-bottom:1px solid #f1f5f9;">
                 <td style="padding:7px 0;color:#64748b;">Primary Phone:</td>
                 <td style="padding:7px 0;font-weight:700;color:#0f172a;">${vendor.phone}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:7px 0;color:#64748b;width:40%;">Vendor ID:</td>
+                <td style="padding:7px 0;font-weight:900;color:#0f172a;font-family:monospace;">${vendorId}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:7px 0;color:#64748b;">Application ID:</td>
+                <td style="padding:7px 0;font-weight:900;color:#0f172a;font-family:monospace;">${applicationId}</td>
               </tr>
               <tr>
                 <td style="padding:7px 0;color:#64748b;">Platform Commission:</td>
@@ -226,7 +244,7 @@ const sendVendorWelcomeEmail = async (vendor, password, pdfUrl, pdfBuffer) => {
   const mailOptions = {
     from: FROM,
     to: vendor.email,
-    subject: `Approved! Your PAW NEAR Store "${vendor.storeName}" is Now Live [Application Copy Attached]`,
+    subject: `Approved! Vendor ID ${vendorId} - Your PAW NEAR Store "${vendor.storeName}" is Now Live`,
     html,
     attachments
   };

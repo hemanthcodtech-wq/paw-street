@@ -25,7 +25,6 @@ const productSchema = new mongoose.Schema({
   },
   petType: {
     type: String,
-    enum: ['Dog', 'Cat', 'Bird', 'Fish', 'All Pets'],
     default: 'Dog'
   },
   vendor: {

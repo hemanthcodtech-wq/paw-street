@@ -61,6 +61,9 @@ export default function DeliveryLoginPage() {
           localStorage.setItem('paw_rider_token', res.token);
           localStorage.setItem('paw_token', res.token);
         }
+        if (res.user) {
+          localStorage.setItem('paw_user', JSON.stringify({ ...res.user, isLoggedIn: true }));
+        }
         setIsAuthenticated(true);
         setRider({
           id: res.user?.id || 'RDR-702',
@@ -97,12 +100,16 @@ export default function DeliveryLoginPage() {
       const res = await api.googleAuth(null, {
         email: 'rider@pawnear.com',
         name: 'Raju Kumar',
-        id: `GOOGLE-RIDER-${Date.now()}`
+        id: `GOOGLE-RIDER-${Date.now()}`,
+        role: 'delivery'
       });
       if (res && res.success) {
         if (res.token) {
           localStorage.setItem('paw_rider_token', res.token);
           localStorage.setItem('paw_token', res.token);
+        }
+        if (res.user) {
+          localStorage.setItem('paw_user', JSON.stringify({ ...res.user, isLoggedIn: true }));
         }
         setIsAuthenticated(true);
         setRider({
@@ -191,6 +198,9 @@ export default function DeliveryLoginPage() {
         if (res.token) {
           localStorage.setItem('paw_rider_token', res.token);
           localStorage.setItem('paw_token', res.token);
+        }
+        if (res.user) {
+          localStorage.setItem('paw_user', JSON.stringify({ ...res.user, isLoggedIn: true }));
         }
         setIsAuthenticated(true);
         setRider({

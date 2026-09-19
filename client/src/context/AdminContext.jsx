@@ -3,6 +3,76 @@ import { api } from '../services/api';
 
 const AdminContext = createContext();
 
+const cmsToPlatformContent = (cms, fallback) => ({
+  ...fallback,
+  announcementBar: {
+    enabled: cms?.topAnnouncement?.isActive !== false,
+    text: cms?.topAnnouncement?.text || fallback.announcementBar.text,
+    linkText: cms?.topAnnouncement?.linkText || cms?.topAnnouncement?.badge || fallback.announcementBar.linkText,
+    linkUrl: cms?.topAnnouncement?.link || fallback.announcementBar.linkUrl
+  },
+  heroBanners: Array.isArray(cms?.heroBanners) && cms.heroBanners.length > 0
+    ? cms.heroBanners.map((b, index) => ({
+        id: b.id || `BNR-${String(index + 1).padStart(2, '0')}`,
+        title: b.title || '',
+        subtitle: b.subTitle || b.subtitle || '',
+        badge: b.tag || b.badge || 'Featured',
+        tagline: b.tagline || 'PAW PROMO',
+        ctaText: b.ctaText || 'Explore',
+        ctaLink: b.link || b.ctaLink || '/products',
+        bgGradient: b.bgColor || b.bgGradient || 'from-amber-500 via-amber-600 to-orange-600',
+        image: b.image || '/images/promo_puppy.jpg',
+        isActive: b.isActive !== false,
+        order: b.order || index + 1
+      }))
+    : fallback.heroBanners,
+  featuredSections: {
+    ...fallback.featuredSections,
+    ...(cms?.featuredSections || {})
+  },
+  promoCoupons: Array.isArray(cms?.coupons)
+    ? cms.coupons.map((c, index) => ({
+        id: c._id || c.id || `CPN-${String(index + 1).padStart(2, '0')}`,
+        code: c.code || '',
+        discountPercent: Number(c.discountPercent) || 0,
+        maxDiscount: Number(c.maxDiscount) || 0,
+        minOrderValue: Number(c.minOrderValue) || 0,
+        description: c.description || `${c.discountPercent || 0}% off on eligible orders`,
+        isActive: c.isActive !== false
+      }))
+    : fallback.promoCoupons
+});
+
+const platformContentToCmsPayload = (content) => ({
+  topAnnouncement: {
+    text: content.announcementBar.text,
+    badge: content.announcementBar.linkText || 'Claim Offer',
+    linkText: content.announcementBar.linkText || 'Claim Offer',
+    link: content.announcementBar.linkUrl || '/products',
+    isActive: content.announcementBar.enabled !== false
+  },
+  heroBanners: (content.heroBanners || []).map((b, index) => ({
+    id: b.id || `BNR-${String(index + 1).padStart(2, '0')}`,
+    title: b.title,
+    subTitle: b.subtitle,
+    tag: b.badge,
+    image: b.image || '/images/promo_puppy.jpg',
+    link: b.ctaLink || '/products',
+    ctaText: b.ctaText || 'Explore',
+    bgColor: b.bgGradient || 'from-amber-500 via-amber-600 to-orange-600',
+    isActive: b.isActive !== false
+  })),
+  featuredSections: content.featuredSections || {},
+  coupons: (content.promoCoupons || []).map(c => ({
+    code: String(c.code || '').toUpperCase(),
+    discountPercent: Number(c.discountPercent) || 0,
+    maxDiscount: Number(c.maxDiscount) || 0,
+    minOrderValue: Number(c.minOrderValue) || 0,
+    description: c.description || '',
+    isActive: c.isActive !== false
+  }))
+});
+
 export function useAdmin() {
   const context = useContext(AdminContext);
   if (!context) {
@@ -22,7 +92,8 @@ export function AdminProvider({ children }) {
     permissions: ['all']
   });
 
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -65,13 +136,21 @@ export function AdminProvider({ children }) {
 
   // Platform Financial Metrics
   const [revenueMetrics, setRevenueMetrics] = useState({
-    totalGmv: 1845920,
-    totalNetPlatformProfit: 248900,
-    totalOrdersCount: 4219,
-    totalVendorPayoutsDisbursed: 1498020,
-    pendingPayoutsQueue: 99000,
-    averageOrderValue: 437.5,
-    growthRatePercent: 24.8
+    totalGmv: 0,
+    totalNetPlatformProfit: 0,
+    totalOrdersCount: 0,
+    totalVendorPayoutsDisbursed: 0,
+    pendingPayoutsQueue: 0,
+    averageOrderValue: 0,
+    growthRatePercent: 0,
+    totalVendors: 0,
+    approvedVendors: 0,
+    pendingVendors: 0,
+    suspendedVendors: 0,
+    totalProducts: 0,
+    pendingProducts: 0,
+    approvedProducts: 0,
+    openTickets: 0
   });
 
   // Vendor Payouts Queue
@@ -107,6 +186,7 @@ export function AdminProvider({ children }) {
       bankAccount: 'HDFC Bank ••••••4920'
     }
   ]);
+  const [paymentHistory, setPaymentHistory] = useState([]);
 
   // ----------------------------------------------------
   // 3.3 PLATFORM CONTROL & DYNAMIC CMS STATE & DATA
@@ -244,7 +324,57 @@ export function AdminProvider({ children }) {
   // ====================================================
   // FETCH ALL ADMIN DATA DIRECTLY FROM MONGODB ATLAS
   // ====================================================
+  const clearAdminSession = useCallback(() => {
+    localStorage.removeItem('paw_admin_token');
+    let user = null;
+    try {
+      user = JSON.parse(localStorage.getItem('paw_user') || 'null');
+    } catch (e) {}
+    if (user?.role === 'admin') {
+      localStorage.removeItem('paw_user');
+      localStorage.removeItem('paw_token');
+    }
+    setIsAuthenticated(false);
+  }, []);
+
+  const validateAdminSession = useCallback(async () => {
+    const token = localStorage.getItem('paw_admin_token');
+    if (!token) {
+      setIsAuthChecking(false);
+      clearAdminSession();
+      return false;
+    }
+
+    try {
+      const res = await api.getProfile();
+      const profile = res?.user || res?.data;
+      if (res?.success && profile?.role === 'admin') {
+        setIsAuthenticated(true);
+        setAdminUser(prev => ({
+          ...prev,
+          id: profile.id || profile._id || prev.id,
+          name: profile.name || prev.name,
+          email: profile.email || prev.email,
+          avatar: profile.avatar || prev.avatar
+        }));
+        localStorage.setItem('paw_user', JSON.stringify({ ...profile, isLoggedIn: true }));
+        return true;
+      }
+      clearAdminSession();
+      return false;
+    } catch (err) {
+      clearAdminSession();
+      return false;
+    } finally {
+      setIsAuthChecking(false);
+    }
+  }, [clearAdminSession]);
+
   const fetchAdminData = useCallback(async () => {
+    if (!localStorage.getItem('paw_admin_token')) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       // 1. Fetch Executive Metrics
@@ -259,17 +389,13 @@ export function AdminProvider({ children }) {
       // 2. Fetch Vendors from DB
       const vendorsRes = await api.getAdminVendors();
       if (vendorsRes && vendorsRes.success && Array.isArray(vendorsRes.vendors)) {
-        if (vendorsRes.vendors.length > 0) {
-          setVendors(vendorsRes.vendors);
-        }
+        setVendors(vendorsRes.vendors);
       }
 
       // 3. Fetch Products from DB
       const productsRes = await api.getAdminProducts();
       if (productsRes && productsRes.success && Array.isArray(productsRes.products)) {
-        if (productsRes.products.length > 0) {
-          setProductsGovernance(productsRes.products);
-        }
+        setProductsGovernance(productsRes.products);
       }
 
       // 4. Fetch Platform CMS from DB
@@ -306,18 +432,34 @@ export function AdminProvider({ children }) {
         }
       }
 
+      if (cmsRes && cmsRes.success && cmsRes.cms) {
+        setPlatformContent(prev => cmsToPlatformContent(cmsRes.cms, prev));
+      }
+
       // 5. Fetch Business Settings from DB
       const bizRes = await api.getAdminBusinessSettings();
       if (bizRes && bizRes.success && bizRes.businessSettings) {
         setBusinessSettings(bizRes.businessSettings);
       }
 
-      // 6. Fetch Support Tickets from DB
+      // 6. Fetch Finance Ledger and Vendor Payout Queue from paid orders
+      const financeRes = await api.getAdminFinanceLedger();
+      if (financeRes && financeRes.success) {
+        if (Array.isArray(financeRes.payoutQueue)) {
+          setPayoutQueue(financeRes.payoutQueue);
+        }
+        if (Array.isArray(financeRes.paymentHistory)) {
+          setPaymentHistory(financeRes.paymentHistory);
+        }
+        if (financeRes.metrics) {
+          setRevenueMetrics(prev => ({ ...prev, ...financeRes.metrics }));
+        }
+      }
+
+      // 7. Fetch Support Tickets from DB
       const supportRes = await api.getAdminSupport();
       if (supportRes && supportRes.success && Array.isArray(supportRes.tickets)) {
-        if (supportRes.tickets.length > 0) {
-          setSupportTickets(supportRes.tickets);
-        }
+        setSupportTickets(supportRes.tickets);
       }
     } catch (err) {
       console.warn('Live admin data load notice:', err.message);
@@ -327,8 +469,11 @@ export function AdminProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    fetchAdminData();
-  }, [fetchAdminData]);
+    validateAdminSession().then((valid) => {
+      if (valid) fetchAdminData();
+      else setIsLoading(false);
+    });
+  }, [fetchAdminData, validateAdminSession]);
 
   // ----------------------------------------------------
   // ACTION HANDLERS WITH DIRECT DATABASE PERSISTENCE
@@ -496,13 +641,29 @@ export function AdminProvider({ children }) {
     }
   };
 
-  const processPayout = (payoutId) => {
+  const processPayout = async (payoutId) => {
+    const payout = payoutQueue.find(p => p.id === payoutId || p.vendorId === payoutId);
+    if (!payout) return;
+
     setPayoutQueue(prev => prev.map(p => {
       if (p.id === payoutId) {
         return { ...p, status: 'processed' };
       }
       return p;
     }));
+
+    try {
+      const res = await api.processAdminVendorPayout(payout.vendorId, {
+        payoutReference: `${payout.id}-${Date.now()}`
+      });
+      if (res?.success) {
+        if (Array.isArray(res.payoutQueue)) setPayoutQueue(res.payoutQueue);
+        if (Array.isArray(res.paymentHistory)) setPaymentHistory(res.paymentHistory);
+        if (res.metrics) setRevenueMetrics(prev => ({ ...prev, ...res.metrics }));
+      }
+    } catch (err) {
+      console.warn('Vendor payout process sync notice:', err.message);
+    }
   };
 
   // 3.3 Platform CMS Actions
@@ -519,27 +680,26 @@ export function AdminProvider({ children }) {
     setPlatformContent(updated);
 
     try {
-      await api.updateAdminCms({
-        topAnnouncement: {
-          text,
-          badge: '⚡ FLASH SALE',
-          link: linkUrl,
-          isActive: enabled
-        }
-      });
+      await api.updateAdminCms(platformContentToCmsPayload(updated));
     } catch (err) {
       console.warn('Announcement bar update sync notice:', err.message);
     }
   };
 
   const toggleFeaturedSection = (sectionKey) => {
-    setPlatformContent(prev => ({
-      ...prev,
-      featuredSections: {
-        ...prev.featuredSections,
-        [sectionKey]: !prev.featuredSections[sectionKey]
-      }
-    }));
+    setPlatformContent(prev => {
+      const updated = {
+        ...prev,
+        featuredSections: {
+          ...prev.featuredSections,
+          [sectionKey]: !prev.featuredSections[sectionKey]
+        }
+      };
+      api.updateAdminCms(platformContentToCmsPayload(updated)).catch(err => {
+        console.warn('Featured section sync notice:', err.message);
+      });
+      return updated;
+    });
   };
 
   const addHeroBanner = async (banner) => {
@@ -549,18 +709,7 @@ export function AdminProvider({ children }) {
     setPlatformContent(prev => ({ ...prev, heroBanners: updatedBanners }));
 
     try {
-      await api.updateAdminCms({
-        heroBanners: updatedBanners.map(b => ({
-          id: b.id,
-          title: b.title,
-          subTitle: b.subtitle,
-          tag: b.badge,
-          image: b.image,
-          link: b.ctaLink,
-          bgColor: b.bgGradient,
-          isActive: b.isActive
-        }))
-      });
+      await api.updateAdminCms(platformContentToCmsPayload({ ...platformContent, heroBanners: updatedBanners }));
     } catch (err) {
       console.warn('Add banner sync notice:', err.message);
     }
@@ -571,18 +720,7 @@ export function AdminProvider({ children }) {
     setPlatformContent(prev => ({ ...prev, heroBanners: updatedBanners }));
 
     try {
-      await api.updateAdminCms({
-        heroBanners: updatedBanners.map(b => ({
-          id: b.id,
-          title: b.title,
-          subTitle: b.subtitle,
-          tag: b.badge,
-          image: b.image,
-          link: b.ctaLink,
-          bgColor: b.bgGradient,
-          isActive: b.isActive
-        }))
-      });
+      await api.updateAdminCms(platformContentToCmsPayload({ ...platformContent, heroBanners: updatedBanners }));
     } catch (err) {
       console.warn('Toggle banner sync notice:', err.message);
     }
@@ -593,18 +731,7 @@ export function AdminProvider({ children }) {
     setPlatformContent(prev => ({ ...prev, heroBanners: updatedBanners }));
 
     try {
-      await api.updateAdminCms({
-        heroBanners: updatedBanners.map(b => ({
-          id: b.id,
-          title: b.title,
-          subTitle: b.subtitle,
-          tag: b.badge,
-          image: b.image,
-          link: b.ctaLink,
-          bgColor: b.bgGradient,
-          isActive: b.isActive
-        }))
-      });
+      await api.updateAdminCms(platformContentToCmsPayload({ ...platformContent, heroBanners: updatedBanners }));
     } catch (err) {
       console.warn('Delete banner sync notice:', err.message);
     }
@@ -612,17 +739,29 @@ export function AdminProvider({ children }) {
 
   const addPromoCoupon = (coupon) => {
     const newId = `CPN-${String(platformContent.promoCoupons.length + 1).padStart(2, '0')}`;
-    setPlatformContent(prev => ({
-      ...prev,
-      promoCoupons: [...prev.promoCoupons, { ...coupon, id: newId, isActive: true }]
-    }));
+    setPlatformContent(prev => {
+      const updated = {
+        ...prev,
+        promoCoupons: [...prev.promoCoupons, { ...coupon, id: newId, isActive: true }]
+      };
+      api.updateAdminCms(platformContentToCmsPayload(updated)).catch(err => {
+        console.warn('Add coupon sync notice:', err.message);
+      });
+      return updated;
+    });
   };
 
   const toggleCouponStatus = (couponId) => {
-    setPlatformContent(prev => ({
-      ...prev,
-      promoCoupons: prev.promoCoupons.map(c => c.id === couponId ? { ...c, isActive: !c.isActive } : c)
-    }));
+    setPlatformContent(prev => {
+      const updated = {
+        ...prev,
+        promoCoupons: prev.promoCoupons.map(c => c.id === couponId ? { ...c, isActive: !c.isActive } : c)
+      };
+      api.updateAdminCms(platformContentToCmsPayload(updated)).catch(err => {
+        console.warn('Coupon toggle sync notice:', err.message);
+      });
+      return updated;
+    });
   };
 
   // 3.4 Support Team Actions
@@ -692,9 +831,11 @@ export function AdminProvider({ children }) {
   };
 
   // Computed Quick Counters for Badges & Header
-  const pendingVendorsCount = vendors.filter(v => v.status === 'pending').length;
-  const pendingProductsCount = productsGovernance.filter(p => p.status === 'pending_approval').length;
-  const openTicketsCount = supportTickets.filter(t => t.status === 'open' || t.status === 'in_progress').length;
+  const totalVendorsCount = Number(revenueMetrics.totalVendors ?? vendors.length);
+  const approvedVendorsCount = Number(revenueMetrics.approvedVendors ?? vendors.filter(v => v.status === 'approved').length);
+  const pendingVendorsCount = Number(revenueMetrics.pendingVendors ?? vendors.filter(v => v.status === 'pending').length);
+  const pendingProductsCount = Number(revenueMetrics.pendingProducts ?? productsGovernance.filter(p => p.status === 'pending_approval').length);
+  const openTicketsCount = Number(revenueMetrics.openTickets ?? supportTickets.filter(t => t.status === 'open' || t.status === 'in_progress').length);
 
   return (
     <AdminContext.Provider
@@ -703,6 +844,8 @@ export function AdminProvider({ children }) {
         setAdminUser,
         isAuthenticated,
         setIsAuthenticated,
+        isAuthChecking,
+        validateAdminSession,
         isLoading,
         isSaving,
         refreshAdminData: fetchAdminData,
@@ -712,6 +855,8 @@ export function AdminProvider({ children }) {
         rejectVendor,
         toggleVendorStatus,
         updateVendorCommission,
+        totalVendorsCount,
+        approvedVendorsCount,
         pendingVendorsCount,
         // 3.1 Product Governance
         productsGovernance,
@@ -725,6 +870,7 @@ export function AdminProvider({ children }) {
         updateDeliveryPricing,
         updateOnboardingFees,
         payoutQueue,
+        paymentHistory,
         processPayout,
         // 3.3 Platform CMS
         platformContent,

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { api } from '../services/api';
 
 const CartContext = createContext();
 
@@ -23,6 +24,7 @@ export function CartProvider({ children }) {
   });
 
   const [appliedCoupon, setAppliedCoupon] = useState({ code: 'PAWFIRST', discount: 200, label: 'First Order Discount' });
+  const [liveCoupons, setLiveCoupons] = useState([]);
   const [toastMessage, setToastMessage] = useState(null);
 
   // Sync cart with localStorage
@@ -34,6 +36,19 @@ export function CartProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('paw_wishlist', JSON.stringify(wishlist));
   }, [wishlist]);
+
+  useEffect(() => {
+    let ignore = false;
+    api.getPlatformCms().then(res => {
+      const coupons = res?.cms?.coupons;
+      if (!ignore && Array.isArray(coupons)) {
+        setLiveCoupons(coupons.filter(c => c.isActive !== false));
+      }
+    }).catch(() => {});
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -134,6 +149,25 @@ export function CartProvider({ children }) {
 
   const applyCoupon = (code) => {
     const cleanCode = code.trim().toUpperCase();
+    const liveCoupon = liveCoupons.find(c => c.code?.toUpperCase() === cleanCode);
+    if (liveCoupon) {
+      if (itemsTotal < Number(liveCoupon.minOrderValue || 0)) {
+        return {
+          success: false,
+          message: `Minimum order value is ₹${liveCoupon.minOrderValue}`
+        };
+      }
+      const percentageDiscount = Math.floor((itemsTotal * Number(liveCoupon.discountPercent || 0)) / 100);
+      const discount = Math.min(percentageDiscount, Number(liveCoupon.maxDiscount || percentageDiscount));
+      setAppliedCoupon({
+        code: cleanCode,
+        discount,
+        label: liveCoupon.description || `${liveCoupon.discountPercent}% OFF`
+      });
+      showToast(`Coupon ${cleanCode} applied! Saved ₹${discount}`);
+      return { success: true, message: 'Coupon applied successfully!' };
+    }
+
     if (cleanCode === 'PAWFIRST') {
       setAppliedCoupon({ code: 'PAWFIRST', discount: 200, label: 'First Order Special (₹200 OFF)' });
       showToast('Coupon PAWFIRST applied! Saved ₹200');

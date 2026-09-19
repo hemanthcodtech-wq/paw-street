@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { 
   Sparkles, 
@@ -19,6 +19,60 @@ import {
 import { SALONS, SERVICE_FILTER_PILLS } from '../../data/services';
 import SalonCard from '../../components/service/SalonCard';
 import BookingModal from '../../components/service/BookingModal';
+import { api } from '../../services/api';
+
+function serviceToSalonItem(product) {
+  const vendorId = product.vendor?._id || product.vendor || product.vendorId || '';
+  const vendorStoreName = product.vendor?.storeName || product.vendorName || 'PAW NEAR Service Partner';
+  const vendorLocation = product.vendor?.location || {};
+  const vendorPhotos = product.vendor?.photos || {};
+  const vendorModes = product.vendor?.serviceDeliveryModes || {};
+  const mode = product.serviceModes || [];
+  return {
+    id: vendorId || product.vendorName || 'pawnear-services',
+    vendorId: vendorId ? vendorId.toString() : '',
+    name: vendorStoreName,
+    type: (product.category || '').toLowerCase().includes('veterinary') ? 'clinic' : 'grooming',
+    tagline: product.description || 'Certified pet care service near you',
+    address: [vendorLocation.address, vendorLocation.city].filter(Boolean).join(', ') || 'Hyderabad',
+    rating: product.vendor?.rating || product.rating || 4.8,
+    reviewsCount: product.reviewsCount || 0,
+    distance: 'Nearby',
+    image: product.primaryImage || product.image || vendorPhotos.storeFront || '/images/cat_grooming.jpg',
+    homeServiceEnabled: vendorModes.homeServiceEnabled !== false && (mode.includes('At-Home Service') || product.deliveryMode === 'home_service'),
+    clinicVisitEnabled: vendorModes.clinicVisitEnabled !== false && (mode.includes('Clinic / Spa Visit') || product.deliveryMode === 'clinic_visit'),
+    homeVisitingFee: vendorModes.homeServiceFee ?? 99,
+    services: [{
+      id: product._id || product.id,
+      _id: product._id || product.id,
+      vendorId: vendorId ? vendorId.toString() : '',
+      vendorName: vendorStoreName,
+      name: product.title || product.name,
+      desc: product.description || '',
+      price: product.price || 0,
+      originalPrice: product.mrp || product.price,
+      image: product.primaryImage || product.image || '/images/cat_grooming.jpg'
+    }]
+  };
+}
+
+function groupServicesByVendor(products) {
+  const grouped = new Map();
+  products.forEach(product => {
+    const salon = serviceToSalonItem(product);
+    const key = salon.vendorId || salon.name;
+    if (!grouped.has(key)) {
+      grouped.set(key, salon);
+    } else {
+      const existing = grouped.get(key);
+      existing.services.push(...salon.services);
+      existing.homeServiceEnabled = existing.homeServiceEnabled || salon.homeServiceEnabled;
+      existing.clinicVisitEnabled = existing.clinicVisitEnabled || salon.clinicVisitEnabled;
+      if (salon.type === 'clinic') existing.type = 'clinic';
+    }
+  });
+  return Array.from(grouped.values());
+}
 
 export default function ServicesPage() {
   const [searchParams] = useSearchParams();
@@ -35,8 +89,31 @@ export default function ServicesPage() {
   // Sub-filter pill
   const [activeSubPill, setActiveSubPill] = useState('all');
   const [selectedSalon, setSelectedSalon] = useState(null);
+  const [salons, setSalons] = useState(SALONS);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredSalons = SALONS.filter(salon => {
+  useEffect(() => {
+    let ignore = false;
+    async function loadServices() {
+      setIsLoading(true);
+      try {
+        const res = await api.getProducts('type=service');
+        if (!ignore && res?.success && Array.isArray(res.products)) {
+          setSalons(groupServicesByVendor(res.products));
+        }
+      } catch (err) {
+        if (!ignore) setSalons(SALONS);
+      } finally {
+        if (!ignore) setIsLoading(false);
+      }
+    }
+    loadServices();
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const filteredSalons = salons.filter(salon => {
     // 1. Main Category filter
     let matchesCategory = false;
     if (activeCategoryTab === 'grooming') matchesCategory = salon.type === 'grooming';
@@ -231,7 +308,7 @@ export default function ServicesPage() {
       <div className="space-y-3 pt-1">
         <div className="flex items-center justify-between px-1">
           <p className="text-xs text-slate-500 font-medium">
-            Showing <span className="font-bold text-slate-900">{filteredSalons.length}</span> certified pet care centers
+            {isLoading ? 'Loading certified pet care centers...' : <>Showing <span className="font-bold text-slate-900">{filteredSalons.length}</span> certified pet care centers</>}
           </p>
         </div>
 
@@ -264,4 +341,3 @@ export default function ServicesPage() {
     </div>
   );
 }
-

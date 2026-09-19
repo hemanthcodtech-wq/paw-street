@@ -57,9 +57,16 @@ export default function AdminLoginPage() {
     try {
       const res = await api.login({ email, password, role: 'admin' });
       if (res && res.success) {
+        if (res.user?.role !== 'admin') {
+          setErrorMessage('This account is not authorized for admin access.');
+          return;
+        }
         if (res.token) {
           localStorage.setItem('paw_admin_token', res.token);
           localStorage.setItem('paw_token', res.token);
+        }
+        if (res.user) {
+          localStorage.setItem('paw_user', JSON.stringify({ ...res.user, isLoggedIn: true }));
         }
         setIsAuthenticated(true);
         setAdminUser({
@@ -84,36 +91,8 @@ export default function AdminLoginPage() {
   // Google Login for Admin
   const handleGoogleLogin = async () => {
     setIsLoading(true);
-    setErrorMessage('');
-    try {
-      const res = await api.googleAuth(null, {
-        email: 'admin@pawnear.com',
-        name: 'Administrator',
-        id: `GOOGLE-ADMIN-${Date.now()}`
-      });
-      if (res && res.success) {
-        if (res.token) {
-          localStorage.setItem('paw_admin_token', res.token);
-          localStorage.setItem('paw_token', res.token);
-        }
-        setIsAuthenticated(true);
-        setAdminUser({
-          id: res.user?.id || 'ADM-001',
-          name: res.user?.name || 'Administrator',
-          email: res.user?.email || 'admin@pawnear.com',
-          role: 'Super Administrator',
-          avatar: res.user?.avatar || '',
-          permissions: ['all']
-        });
-        navigate('/admin/dashboard');
-      } else {
-        setErrorMessage(res?.message || 'Google sign-in failed');
-      }
-    } catch (err) {
-      setErrorMessage(err.message || 'Google sign-in failed');
-    } finally {
-      setIsLoading(false);
-    }
+    setErrorMessage('Admin Google sign-in is disabled until a verified Google OAuth credential is configured.');
+    setIsLoading(false);
   };
 
   // Send Forgot Password OTP
@@ -171,10 +150,17 @@ export default function AdminLoginPage() {
       });
 
       if (res && res.success) {
+        if (res.user?.role !== 'admin') {
+          setErrorMessage('This account is not authorized for admin access.');
+          return;
+        }
         setStatusNotice('Password successfully reset! Logging you in...');
         if (res.token) {
           localStorage.setItem('paw_admin_token', res.token);
           localStorage.setItem('paw_token', res.token);
+        }
+        if (res.user) {
+          localStorage.setItem('paw_user', JSON.stringify({ ...res.user, isLoggedIn: true }));
         }
         setIsAuthenticated(true);
         setAdminUser({

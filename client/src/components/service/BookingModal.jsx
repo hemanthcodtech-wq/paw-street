@@ -19,10 +19,12 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useVendor } from '../../context/VendorContext';
+import { useOrders } from '../../context/OrderContext';
 
 export default function BookingModal({ salon, isOpen, onClose }) {
-  const { pets } = useAuth();
-  const { addOrder } = useVendor();
+  const { user, pets, setIsAuthModalOpen } = useAuth();
+  const { addOrder, fetchVendorData } = useVendor();
+  const { placeOrder } = useOrders();
   
   const [selectedPet, setSelectedPet] = useState(pets[0]?.id || 'pet-1');
   const [selectedService, setSelectedService] = useState(salon?.services[0]?.id || null);
@@ -59,8 +61,7 @@ export default function BookingModal({ salon, isOpen, onClose }) {
   const activeServiceObj = salon.services?.find(s => s.id === selectedService) || salon.services?.[0] || {
     id: 's-def',
     name: 'Standard Pet Care Service',
-    price: 899,
-    duration: '45 mins'
+    price: 899
   };
 
   const activePetObj = pets.find(p => p.id === selectedPet) || {
@@ -81,12 +82,20 @@ export default function BookingModal({ salon, isOpen, onClose }) {
     }
   };
 
-  const handleConfirm = (e) => {
+  const handleConfirm = async (e) => {
     e.preventDefault();
-    const newBookingId = `BKG-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    if (!user?.isLoggedIn) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    const isClinicVisit = serviceType === 'clinic';
+    const vendorId = salon.vendorId || salon.vendor || activeServiceObj.vendorId || activeServiceObj.vendor || '';
+    const serviceId = activeServiceObj._id || activeServiceObj.id;
     
     const bookingPayload = {
-      id: newBookingId,
+      id: `BKG-${Math.floor(100000 + Math.random() * 900000)}`,
       orderType: serviceType === 'home' ? 'home_service' : 'clinic_visit',
       serviceCategory: salon.type === 'clinic' ? 'Veterinary' : 'Grooming',
       serviceName: activeServiceObj.name,
@@ -98,8 +107,32 @@ export default function BookingModal({ salon, isOpen, onClose }) {
         : `In-Clinic Visit (${salon.name}, ${salon.address})`,
       scheduledSlot: `${selectedDate}, ${selectedSlot}`,
       items: [
-        { id: activeServiceObj.id, name: activeServiceObj.name, quantity: 1, price: activeServiceObj.price },
-        ...selectedAddons.map(a => ({ id: a.id, name: a.name, quantity: 1, price: a.price }))
+        {
+          id: serviceId,
+          product: serviceId,
+          name: activeServiceObj.name,
+          quantity: 1,
+          price: activeServiceObj.price,
+          image: activeServiceObj.image || salon.image || '/images/cat_grooming.jpg',
+          type: 'service',
+          isService: true,
+          vendorId,
+          vendorName: salon.name,
+          storeName: salon.name,
+          serviceMode: isClinicVisit ? 'Clinic Visit' : 'At-Home Service',
+          selectedSize: isClinicVisit ? 'Clinic Visit' : 'At-Home Service'
+        },
+        ...selectedAddons.map(a => ({
+          id: a.id,
+          name: a.name,
+          quantity: 1,
+          price: a.price,
+          image: salon.image || '/images/cat_grooming.jpg',
+          type: 'service',
+          vendorId,
+          vendorName: salon.name,
+          serviceMode: 'Add-on'
+        }))
       ],
       totalAmount: finalTotal,
       paymentMethod: paymentMethod === 'upi' ? 'Prepaid (UPI - GPay)' : paymentMethod === 'card' ? 'Prepaid (Credit Card)' : 'Pay on Arrival / Clinic Counter',
@@ -110,8 +143,45 @@ export default function BookingModal({ salon, isOpen, onClose }) {
       notes: specialNotes || (serviceType === 'home' ? 'Doorstep home service appointment.' : 'In-clinic scheduled visit.')
     };
 
+    try {
+      const saved = await placeOrder({
+        deliveryAddress: {
+          name: user?.name || 'Pet Parent',
+          phone: user?.phone || bookingPayload.customerPhone,
+          addressLine1: serviceType === 'home' ? homeAddress : `${salon.name}, ${salon.address || 'Hyderabad'}`,
+          city: 'Hyderabad',
+          pincode: '500034'
+        },
+        deliverySpeed: bookingPayload.scheduledSlot,
+        paymentMethod: paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online (Razorpay / UPI / Cards)',
+        customerEmail: user?.email || '',
+        customerPhone: user?.phone || bookingPayload.customerPhone,
+        items: bookingPayload.items,
+        itemsTotal: finalTotal,
+        couponDiscount: 0,
+        deliveryFee: 0,
+        platformFee: 0,
+        finalTotal,
+        appointment: {
+          mode: bookingPayload.orderType,
+          scheduledSlot: bookingPayload.scheduledSlot,
+          petName: bookingPayload.petName,
+          serviceCategory: bookingPayload.serviceCategory,
+          serviceName: bookingPayload.serviceName,
+          notes: bookingPayload.notes
+        }
+      });
+      bookingPayload.id = saved?.id || bookingPayload.id;
+      bookingPayload._id = saved?._id;
+    } catch (err) {
+      console.warn('Appointment booking saved locally only:', err);
+    }
+
     if (addOrder) {
       addOrder(bookingPayload);
+    }
+    if (fetchVendorData && vendorId) {
+      fetchVendorData();
     }
     setCreatedBooking(bookingPayload);
     setBookingComplete(true);
@@ -340,10 +410,6 @@ export default function BookingModal({ salon, isOpen, onClose }) {
                         <div className="min-w-0 pr-2">
                           <div className="text-xs font-black text-slate-900">{svc.name}</div>
                           {svc.desc && <p className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">{svc.desc}</p>}
-                          <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                            <Clock className="w-3 h-3 text-slate-400" />
-                            <span>{svc.duration}</span>
-                          </div>
                         </div>
                         <div className="text-right shrink-0">
                           <span className="text-sm font-black text-slate-900">₹{svc.price}</span>
@@ -498,4 +564,3 @@ export default function BookingModal({ salon, isOpen, onClose }) {
     document.body
   );
 }
-

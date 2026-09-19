@@ -38,7 +38,7 @@ const INITIAL_VENDOR = {
     interior: '',
     logo: ''
   },
-  status: 'pending',
+  status: 'not_submitted',
   submittedAt: null,
   approvedAt: null,
   isStoreOpen: false,
@@ -503,7 +503,17 @@ export function VendorProvider({ children }) {
   // Vendor profile & store details
   const [vendor, setVendor] = useState(() => {
     const saved = localStorage.getItem('paw_vendor_profile');
-    return saved ? JSON.parse(saved) : INITIAL_VENDOR;
+    if (!saved) return INITIAL_VENDOR;
+    try {
+      const parsed = JSON.parse(saved);
+      if (parsed?.status === 'pending' && !parsed?.submittedAt) {
+        return INITIAL_VENDOR;
+      }
+      return parsed;
+    } catch (e) {
+      localStorage.removeItem('paw_vendor_profile');
+      return INITIAL_VENDOR;
+    }
   });
 
   // Store products (isolated per vendor)
@@ -548,8 +558,21 @@ export function VendorProvider({ children }) {
     try {
       // 1. Fetch Vendor Profile
       const profileRes = await api.getVendorProfile();
-      if (!profileRes?.success && profileRes?.message?.includes('Forbidden')) {
-        return; // Non-vendor account, exit early
+      if (!profileRes?.success) {
+        if (profileRes?.message?.includes('not found')) {
+           // Vendor was truncated or not found, clear stale cache!
+           setVendor(INITIAL_VENDOR);
+           setProducts([]);
+           setServices([]);
+           setOrders([]);
+           setDeliveryBoys([]);
+           localStorage.removeItem('paw_vendor_profile');
+           localStorage.removeItem('paw_vendor_products');
+           localStorage.removeItem('paw_vendor_services');
+           localStorage.removeItem('paw_vendor_orders');
+           localStorage.removeItem('paw_vendor_delivery_boys');
+        }
+        return; // Non-vendor account or missing, exit early
       }
 
       if (profileRes?.success && profileRes.vendor) {
@@ -654,13 +677,13 @@ export function VendorProvider({ children }) {
       id: 'vendor-' + Date.now().toString().slice(-6)
     };
 
-    try {
-      const result = await api.submitVendorOnboarding(payload);
-      if (result?.success && result?.vendor) {
-        newVendorData.id = result.vendor._id || newVendorData.id;
-      }
-    } catch (err) {
-      console.error('Onboarding API error:', err.message);
+    const result = await api.submitVendorOnboarding(payload);
+    if (!result?.success) {
+      throw new Error(result?.message || 'Unable to submit vendor onboarding application.');
+    }
+
+    if (result?.vendor) {
+      newVendorData.id = result.vendor._id || newVendorData.id;
     }
 
     setVendor(newVendorData);

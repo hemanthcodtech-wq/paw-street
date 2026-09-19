@@ -28,6 +28,7 @@ import Logo from '../common/Logo';
 export default function AdminLayout({ children }) {
   const { 
     adminUser, 
+    approvedVendorsCount,
     pendingVendorsCount, 
     pendingProductsCount, 
     openTicketsCount,
@@ -310,7 +311,7 @@ export default function AdminLayout({ children }) {
               </span>
               <div className="flex justify-between text-slate-700 text-[11px]">
                 <span>Active Vendors:</span>
-                <strong className="text-slate-900">4 Approved</strong>
+                <strong className="text-slate-900">{approvedVendorsCount} Approved</strong>
               </div>
               <div className="flex justify-between text-slate-700 text-[11px]">
                 <span>Pending Audits:</span>

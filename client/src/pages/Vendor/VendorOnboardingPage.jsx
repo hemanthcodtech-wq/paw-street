@@ -51,10 +51,10 @@ import Logo from '../../components/common/Logo';
 
 export default function VendorOnboardingPage() {
   const navigate = useNavigate();
-  const { vendor, submitOnboardingApplication, setApprovalStatus } = useVendor();
+  const { submitOnboardingApplication } = useVendor();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [isSubmitted, setIsSubmitted] = useState(vendor.status === 'pending');
+  const [submittedApplication, setSubmittedApplication] = useState(null);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsSuccess, setGpsSuccess] = useState(false);
 
@@ -300,7 +300,7 @@ export default function VendorOnboardingPage() {
     setCurrentStep(nextStep);
   };
 
-  const handleSubmitApplication = (e) => {
+  const handleSubmitApplication = async (e) => {
     e.preventDefault();
     
     // Final check for all steps
@@ -311,8 +311,12 @@ export default function VendorOnboardingPage() {
       }
     }
     
-    submitOnboardingApplication(formData);
-    setIsSubmitted(true);
+    try {
+      const submittedVendor = await submitOnboardingApplication(formData);
+      setSubmittedApplication(submittedVendor);
+    } catch (err) {
+      alert(err.message || 'Unable to submit onboarding application. Please try again.');
+    }
   };
 
   const steps = [
@@ -325,7 +329,9 @@ export default function VendorOnboardingPage() {
   ];
 
   // SUBMITTED STATE: Under Admin Review
-  if (isSubmitted) {
+  const hasSubmittedApplication = submittedApplication && typeof submittedApplication === 'object' && submittedApplication.id;
+
+  if (hasSubmittedApplication) {
     return (
       <div className="min-h-screen bg-[#FAF7F2] py-12 px-4 sm:px-6 lg:px-8 flex flex-col justify-center items-center font-sans">
         <div className="max-w-2xl w-full bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 shadow-xl text-center space-y-6 animate-in zoom-in-95 duration-300">
@@ -344,8 +350,8 @@ export default function VendorOnboardingPage() {
               Application Submitted for Admin Approval!
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
-              Thank you, <strong>{formData.fullName || 'Store Manager'}</strong>. Your onboarding application for{' '}
-              <strong>{formData.storeName || 'Your Pet Store'}</strong> is under verification by the PAW NEAR compliance team.
+              Thank you, <strong>{submittedApplication.fullName}</strong>. Your onboarding application for{' '}
+              <strong>{submittedApplication.storeName}</strong> is under verification by the PAW NEAR compliance team.
             </p>
           </div>
 
@@ -390,15 +396,15 @@ export default function VendorOnboardingPage() {
           <div className="bg-white rounded-2xl p-4 border border-slate-200 text-left space-y-2 text-xs">
             <div className="flex justify-between py-1 border-b border-slate-100">
               <span className="text-slate-500">Tracking Reference ID:</span>
-              <span className="font-mono font-bold text-slate-900">APP-HYD-884920</span>
+              <span className="font-mono font-bold text-slate-900">{submittedApplication.id}</span>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-100">
               <span className="text-slate-500">Store Licence & PAN:</span>
-              <span className="font-bold text-slate-800">{formData.storeLicenceNumber || 'DL-PET-2024-88492'} • {formData.panNumber || 'ABCPS1234D'}</span>
+              <span className="font-bold text-slate-800">{submittedApplication.storeLicenceNumber} • {submittedApplication.panNumber}</span>
             </div>
             <div className="flex justify-between py-1">
               <span className="text-slate-500">Google Maps Geolocation:</span>
-              <span className="font-mono text-slate-800 font-bold">{formData.location.lat}, {formData.location.lng}</span>
+              <span className="font-mono text-slate-800 font-bold">{submittedApplication.location?.lat}, {submittedApplication.location?.lng}</span>
             </div>
           </div>
 

@@ -219,11 +219,11 @@ export default function VendorProductsPage() {
     shortName: '',
     category: 'Grooming',
     deliveryMode: 'home_service',
-    price: 999,
-    mrp: 1299,
-    durationMinutes: 45,
+    price: '',
+    mrp: '',
+    durationMinutes: '',
     petType: 'Dogs & Cats',
-    visitingFee: 99,
+    visitingFee: '',
     image: '',
     description: '',
     featuresText: 'Professional Gentle Care\nSanitized Equipment\nDoorstep Service'
@@ -281,11 +281,11 @@ export default function VendorProductsPage() {
       shortName: '',
       category: 'Grooming',
       deliveryMode: 'home_service',
-      price: 899,
-      mrp: 1199,
-      durationMinutes: 45,
+      price: '',
+      mrp: '',
+      durationMinutes: '',
       petType: 'Dogs & Cats',
-      visitingFee: 99,
+      visitingFee: '',
       image: '',
       description: 'Comprehensive pet care service delivered by certified professionals.',
       featuresText: 'Certified Professional Care\nSanitized Clinical Kit\nHealth Card Update'
@@ -738,13 +738,8 @@ export default function VendorProductsPage() {
                       </div>
                     )}
 
-                    {/* Meta info: Duration, Pet Type & Visiting Fee */}
+                    {/* Meta info: Pet Type & Visiting Fee */}
                     <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 pt-1">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{srv.durationMinutes || 45} mins duration</span>
-                      </span>
-                      <span className="text-slate-300">•</span>
                       <span>{srv.petType || 'Dogs & Cats'}</span>
                       {isHome && srv.visitingFee > 0 && (
                         <>
@@ -848,7 +843,7 @@ export default function VendorProductsPage() {
                   <input
                     type="text"
                     required
-                    value={productFormData.name}
+                    value={productFormData.name || ''}
                     onChange={(e) => setProductFormData({ ...productFormData, name: e.target.value })}
                     placeholder="e.g. Royal Canin Medium Adult Dog Food 4kg"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-amber-400"
@@ -862,7 +857,7 @@ export default function VendorProductsPage() {
                     </label>
                     <input
                       type="text"
-                      value={productFormData.brand}
+                      value={productFormData.brand || ''}
                       onChange={(e) => setProductFormData({ ...productFormData, brand: e.target.value })}
                       placeholder="e.g. Royal Canin / Pedigree"
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-amber-400"
@@ -910,8 +905,8 @@ export default function VendorProductsPage() {
                     <input
                       type="number"
                       min="1"
-                      value={productFormData.originalPrice}
-                      onChange={(e) => setProductFormData({ ...productFormData, originalPrice: e.target.value })}
+                      value={productFormData.mrp || ''}
+                      onChange={(e) => setProductFormData({ ...productFormData, mrp: e.target.value })}
                       placeholder="999"
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-amber-400"
                     />
@@ -925,8 +920,8 @@ export default function VendorProductsPage() {
                       type="number"
                       required
                       min="0"
-                      value={productFormData.stock}
-                      onChange={(e) => setProductFormData({ ...productFormData, stock: e.target.value })}
+                      value={productFormData.stockCount || ''}
+                      onChange={(e) => setProductFormData({ ...productFormData, stockCount: e.target.value })}
                       placeholder="25"
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-amber-400"
                     />
@@ -956,7 +951,7 @@ export default function VendorProductsPage() {
                     </label>
                     <input
                       type="text"
-                      value={productFormData.size}
+                      value={productFormData.size || ''}
                       onChange={(e) => setProductFormData({ ...productFormData, size: e.target.value })}
                       placeholder="e.g. 3 kg or Medium"
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-amber-400"
@@ -1086,14 +1081,14 @@ export default function VendorProductsPage() {
                   <input
                     type="text"
                     required
-                    value={serviceFormData.name}
+                    value={serviceFormData.name || ''}
                     onChange={(e) => setServiceFormData({ ...serviceFormData, name: e.target.value })}
                     placeholder="e.g. Full Bath, Haircut & Nail Styling or Complete Health Checkup"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-amber-400"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">
                       Service Category *
@@ -1108,21 +1103,6 @@ export default function VendorProductsPage() {
                       <option value="Boarding">🏨 Pet Boarding & Daycare</option>
                     </select>
                   </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">
-                      Duration (mins) *
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      min="15"
-                      value={serviceFormData.durationMins}
-                      onChange={(e) => setServiceFormData({ ...serviceFormData, durationMins: e.target.value })}
-                      placeholder="60"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
@@ -1134,7 +1114,7 @@ export default function VendorProductsPage() {
                       type="number"
                       required
                       min="0"
-                      value={serviceFormData.price}
+                      value={serviceFormData.price || ''}
                       onChange={(e) => setServiceFormData({ ...serviceFormData, price: e.target.value })}
                       placeholder="999"
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-amber-400 font-bold"
@@ -1148,8 +1128,8 @@ export default function VendorProductsPage() {
                     <input
                       type="number"
                       min="0"
-                      value={serviceFormData.originalPrice}
-                      onChange={(e) => setServiceFormData({ ...serviceFormData, originalPrice: e.target.value })}
+                      value={serviceFormData.mrp || ''}
+                      onChange={(e) => setServiceFormData({ ...serviceFormData, mrp: e.target.value })}
                       placeholder="1299"
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-amber-400"
                     />
@@ -1163,7 +1143,7 @@ export default function VendorProductsPage() {
                       <input
                         type="number"
                         min="0"
-                        value={serviceFormData.visitingFee}
+                        value={serviceFormData.visitingFee || ''}
                         onChange={(e) => setServiceFormData({ ...serviceFormData, visitingFee: e.target.value })}
                         placeholder="99"
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-amber-400 font-bold text-amber-800"

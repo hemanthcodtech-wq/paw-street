@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { 
   Store, 
@@ -12,18 +12,93 @@ import {
   CheckCircle2,
   ArrowRight
 } from 'lucide-react';
-import { STORES } from '../../data/stores';
-import { PRODUCTS } from '../../data/products';
+import { api } from '../../services/api';
 import ProductCard from '../../components/product/ProductCard';
 
 export default function StoresPage() {
   const { storeId } = useParams();
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const [stores, setStores] = useState([]);
+  const [store, setStore] = useState(null);
+  const [storeProducts, setStoreProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Normalize a backend vendor document into a store UI object
+  const normalizeStore = (v) => ({
+    id: v._id,
+    name: v.storeName || 'Unknown Store',
+    isVerified: v.status === 'approved',
+    category: v.category || 'Pet Store',
+    address: v.location?.address || 'Hyderabad',
+    rating: v.rating || 4.5,
+    reviewsCount: v.reviewsCount || 0,
+    distance: v.location?.city || '1.5 km',
+    eta: '15-20 mins',
+    timing: v.isStoreOpen ? 'Open Now' : 'Closed',
+    featuredTags: v.businessTypes || [],
+    image: v.photos?.storeFront || '/images/hero_pets.jpg',
+    freeDeliveryAbove: v.serviceDeliveryModes?.homeServiceFee || 199
+  });
+
+  // Normalize backend product doc into product UI object
+  const normalizeProduct = (p) => ({
+    id: p._id,
+    name: p.title,
+    brand: p.vendorName || 'PAW NEAR',
+    price: p.price,
+    mrp: p.mrp || p.price,
+    discountPercent: p.mrp && p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0,
+    rating: p.rating || 4.5,
+    reviewsCount: p.reviewsCount || 0,
+    isTopPick: p.isFeatured || false,
+    isInstantDelivery: p.type !== 'service',
+    deliveryTimeMinutes: 20,
+    storeId: p.vendor,
+    storeName: p.vendorName,
+    image: p.primaryImage || '/images/prod_pedigree.jpg',
+    isService: p.type === 'service',
+  });
+
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      if (storeId) {
+        try {
+          const res = await api.getVendorById(storeId);
+          if (res?.success && res.vendor) {
+            setStore(normalizeStore(res.vendor));
+          }
+          
+          const pRes = await api.getProducts(`vendorId=${storeId}`);
+          if (pRes?.success && pRes.products) {
+            setStoreProducts(pRes.products.map(normalizeProduct));
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      } else {
+        try {
+          const res = await api.getVendors();
+          if (res?.success && res.vendors) {
+            setStores(res.vendors.map(normalizeStore));
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }
+      setLoading(false);
+    }
+    
+    fetchData();
+  }, [storeId]);
+
+  if (loading) {
+    return <div className="flex justify-center p-12"><div className="animate-spin w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full"></div></div>;
+  }
 
   // If a specific storeId is provided, show that store's detailed showcase
-  if (storeId) {
-    const store = STORES.find(s => s.id === storeId) || STORES[0];
-    const storeProducts = PRODUCTS.filter(p => p.storeId === store.id || p.storeId === 'store-1');
+  if (storeId && store) {
 
     return (
       <div className="space-y-8 pb-12">
@@ -103,7 +178,7 @@ export default function StoresPage() {
   }
 
   // Directory of all stores
-  const filteredStores = STORES.filter(s =>
+  const filteredStores = stores.filter(s =>
     s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     s.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
     s.address.toLowerCase().includes(searchQuery.toLowerCase())

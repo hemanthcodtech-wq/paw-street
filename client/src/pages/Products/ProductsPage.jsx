@@ -20,12 +20,13 @@ import { api } from '../../services/api';
 function normalizeProduct(p) {
   // Preserve the vendor ObjectId as both storeId (for display) and vendorId (for order linking)
   const vendorId = p.vendor?._id || p.vendor || '';
+  const vendorStoreName = p.vendor?.storeName || p.vendorName || 'PAW NEAR Store';
   return {
     id: p._id || p.id,
     _id: p._id || p.id,
     name: p.title || p.name || 'Pet Item',
     shortName: (p.title || p.name || '').slice(0, 40),
-    brand: p.vendorName || p.brand || 'PAW NEAR',
+    brand: vendorStoreName || p.brand || 'PAW NEAR',
     category: p.category?.toLowerCase() || 'food',
     subcategory: p.subCategory || p.subcategory || '',
     petType: p.petType || 'All Pets',
@@ -38,7 +39,7 @@ function normalizeProduct(p) {
     isInstantDelivery: p.type !== 'service',
     deliveryTimeMinutes: 20,
     storeId: vendorId || 'store-1',
-    storeName: p.vendorName || 'PAW NEAR Store',
+    storeName: vendorStoreName,
     storeDistance: '1.5 km',
     image: p.primaryImage || (p.images && p.images[0]) || '/images/prod_pedigree.jpg',
     gallery: p.images || [p.primaryImage || '/images/prod_pedigree.jpg'],

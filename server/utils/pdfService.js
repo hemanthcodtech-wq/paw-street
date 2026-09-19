@@ -209,6 +209,108 @@ const generateVendorApprovalPDF = (vendor) => {
   });
 };
 
+const generateVendorApprovalPDFWithCredentials = (vendor, password) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({
+        size: 'A4',
+        margin: 36,
+        info: {
+          Title: `PAW NEAR Vendor Approval - ${vendor.storeName || 'Vendor'}`,
+          Author: 'PAW NEAR Technologies India',
+          Subject: 'Vendor Onboarding Approval, Credentials and Application Copy'
+        }
+      });
+
+      const buffers = [];
+      doc.on('data', buffers.push.bind(buffers));
+      doc.on('end', () => resolve(Buffer.concat(buffers)));
+      doc.on('error', reject);
+
+      const left = 42;
+      const width = 511;
+      const vendorId = vendor._id ? vendor._id.toString() : '';
+      const applicationId = vendorId ? `APP-VN-${vendorId.slice(-8).toUpperCase()}` : `APP-VN-${Date.now()}`;
+      const issueDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+      const businessTypes = Array.isArray(vendor.businessTypes) && vendor.businessTypes.length
+        ? vendor.businessTypes.join(', ')
+        : 'Pet Store & Retail Services';
+
+      const field = (label, value, x, y, fieldWidth = 230) => {
+        doc.fontSize(8).font('Helvetica-Bold').fillColor('#64748B').text(label.toUpperCase(), x, y);
+        doc.fontSize(10).font('Helvetica').fillColor('#0F172A').text(String(value || 'N/A'), x, y + 12, {
+          width: fieldWidth,
+          ellipsis: true
+        });
+      };
+
+      const section = (title, y, height) => {
+        doc.roundedRect(left, y, width, height, 8).fillAndStroke('#FFFFFF', '#E2E8F0');
+        doc.roundedRect(left, y, width, 28, 8).fill('#F8FAFC');
+        doc.rect(left, y + 18, width, 10).fill('#F8FAFC');
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#0F172A').text(title, left + 14, y + 9);
+      };
+
+      doc.rect(0, 0, 595.28, 78).fill('#0F172A');
+      doc.rect(0, 78, 595.28, 5).fill('#FFB703');
+      doc.fontSize(24).font('Helvetica-Bold').fillColor('#FFB703').text('PAW NEAR', left, 18);
+      doc.fontSize(10).font('Helvetica').fillColor('#CBD5E1').text('VENDOR APPROVAL, LOGIN CREDENTIALS & ONBOARDING FORM COPY', left, 49);
+
+      doc.roundedRect(396, 18, 157, 42, 8).fill('#1E293B');
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#94A3B8').text('STATUS', 410, 25);
+      doc.fontSize(12).font('Helvetica-Bold').fillColor('#22C55E').text('APPROVED', 410, 39);
+
+      let y = 100;
+      section('1. Vendor Activation IDs & Portal Credentials', y, 118);
+      field('Vendor ID', vendorId, left + 16, y + 40);
+      field('Application ID', applicationId, left + 274, y + 40);
+      field('Registered Email', vendor.email, left + 16, y + 72);
+      field('Temporary Password', password || 'Sent separately', left + 274, y + 72);
+
+      y += 132;
+      section('2. Store & Manager Information', y, 118);
+      field('Store Name', vendor.storeName, left + 16, y + 40);
+      field('Authorized Manager', vendor.fullName, left + 274, y + 40);
+      field('Business Category', vendor.category || 'Pet Store & Services', left + 16, y + 72);
+      field('Business Types', businessTypes, left + 274, y + 72);
+
+      y += 132;
+      section('3. KYC Documents Reviewed by Admin', y, 118);
+      field('Trade Licence Number', vendor.storeLicenceNumber || 'N/A', left + 16, y + 40);
+      field('PAN Number', vendor.panNumber || 'N/A', left + 274, y + 40);
+      field('Aadhaar Number', vendor.aadhaarNumber || 'N/A', left + 16, y + 72);
+      field('Review Status', 'KYC documents checked and approved by admin', left + 274, y + 72);
+
+      y += 132;
+      section('4. Store Location & Payout Details', y, 146);
+      field('Address', vendor.location?.address || 'N/A', left + 16, y + 40);
+      field('City / State / PIN', `${vendor.location?.city || 'Hyderabad'}, ${vendor.location?.state || 'Telangana'} - ${vendor.location?.pincode || '500034'}`, left + 274, y + 40);
+      field('Bank Name', vendor.bankDetails?.bankName || 'N/A', left + 16, y + 72);
+      field('Account Holder', vendor.bankDetails?.accountHolderName || vendor.fullName, left + 274, y + 72);
+      field('IFSC / UPI', `${vendor.bankDetails?.ifscCode || 'N/A'} / ${vendor.bankDetails?.upiId || 'N/A'}`, left + 16, y + 104, 480);
+
+      y += 160;
+      section('5. Commercial Terms', y, 90);
+      field('Platform Commission', `${vendor.commissionRate || 12}%`, left + 16, y + 40);
+      field('Onboarding Credits / Fee', `Paid: ${vendor.onboardingFeePaid !== false ? 'Yes' : 'No'} | Amount: INR ${vendor.onboardingFeeAmount || 2499}`, left + 274, y + 40);
+
+      doc.roundedRect(left, 715, width, 72, 8).fillAndStroke('#FFFBEB', '#FDE68A');
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#92400E').text('Approval Statement', left + 14, 728);
+      doc.fontSize(8.5).font('Helvetica').fillColor('#78350F').text(
+        `Issued on ${issueDate}. This PDF is the official copy of the vendor onboarding form and approval record. The vendor may use the Vendor ID above for support, settlement, and compliance queries.`,
+        left + 14,
+        744,
+        { width: width - 28, lineGap: 2 }
+      );
+
+      doc.end();
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
 module.exports = {
-  generateVendorApprovalPDF
+  generateVendorApprovalPDF,
+  generateVendorApprovalPDFWithCredentials
 };

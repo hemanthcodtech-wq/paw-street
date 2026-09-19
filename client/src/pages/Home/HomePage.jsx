@@ -22,11 +22,13 @@ import ProductCard from '../../components/product/ProductCard';
 import SalonCard from '../../components/service/SalonCard';
 import BookingModal from '../../components/service/BookingModal';
 import { useLocationContext } from '../../context/LocationContext';
+import { api } from '../../services/api';
 
 export default function HomePage() {
   const navigate = useNavigate();
   const { selectedLocation } = useLocationContext();
   const [selectedSalonForBooking, setSelectedSalonForBooking] = React.useState(null);
+  const [cms, setCms] = React.useState(null);
 
   const topPicks = PRODUCTS.filter(p => p.isTopPick);
   const accessoriesAndToys = PRODUCTS.filter(p => p.category === 'accessories');
@@ -34,6 +36,29 @@ export default function HomePage() {
   const trendingProducts = PRODUCTS.slice(7, 11);
 
   const [homeSearchQuery, setHomeSearchQuery] = React.useState('');
+
+  React.useEffect(() => {
+    let ignore = false;
+    api.getPlatformCms().then(res => {
+      if (!ignore && res?.success && res.cms) {
+        setCms(res.cms);
+      }
+    }).catch(() => {});
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const activeHeroBanners = (cms?.heroBanners || []).filter(b => b.isActive !== false);
+  const activeAnnouncement = cms?.topAnnouncement?.isActive !== false ? cms?.topAnnouncement : null;
+  const featuredSections = {
+    flashDealsEnabled: true,
+    popularNearYouEnabled: true,
+    homeServicesFeaturedEnabled: true,
+    trendingCategoriesEnabled: true,
+    emergencyVetBannerEnabled: true,
+    ...(cms?.featuredSections || {})
+  };
 
   const handleMobileSearch = (e) => {
     e.preventDefault();
@@ -44,6 +69,44 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6 sm:space-y-8 md:space-y-12 pb-16 md:pb-12">
+      {activeAnnouncement && (
+        <Link
+          to={activeAnnouncement.link || '/products'}
+          className="block -mx-3.5 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 text-white text-xs sm:text-sm font-bold text-center hover:brightness-105 transition-all"
+        >
+          {activeAnnouncement.text}
+        </Link>
+      )}
+
+      {activeHeroBanners.length > 0 && (
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+          {activeHeroBanners.slice(0, 3).map((banner) => (
+            <Link
+              key={banner.id}
+              to={banner.link || '/products'}
+              className={`relative overflow-hidden rounded-3xl min-h-[180px] p-5 text-white shadow-lg bg-gradient-to-br ${banner.bgColor || 'from-slate-900 to-slate-700'} flex flex-col justify-between`}
+            >
+              <div className="relative z-10 space-y-2 max-w-[72%]">
+                <span className="inline-flex bg-amber-400 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">
+                  {banner.tag || 'Featured'}
+                </span>
+                <h2 className="font-heading font-black text-xl leading-tight">{banner.title}</h2>
+                <p className="text-xs text-white/85 line-clamp-2">{banner.subTitle}</p>
+              </div>
+              <span className="relative z-10 text-xs font-black text-amber-200">
+                {banner.ctaText || 'Explore'} →
+              </span>
+              {banner.image && (
+                <img
+                  src={banner.image}
+                  alt=""
+                  className="absolute right-0 bottom-0 h-full w-1/2 object-cover opacity-80 mix-blend-screen"
+                />
+              )}
+            </Link>
+          ))}
+        </section>
+      )}
       
       {/* 1. Hero Promo Banner matching UI Reference ("Everything Your Pet Needs, Near You!") */}
       <section className="relative overflow-hidden bg-[#FDF8EE] -mx-3.5 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-10 md:py-12 mb-4">
@@ -204,6 +267,7 @@ export default function HomePage() {
       </section>
 
       {/* Popular Near You */}
+      {featuredSections.popularNearYouEnabled && (
       <section className="space-y-3 sm:space-y-4 mt-8">
         <div className="flex items-center justify-between">
           <h2 className="font-heading font-black text-slate-900 text-base sm:text-xl md:text-2xl tracking-tight">
@@ -227,8 +291,10 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+      )}
 
       {/* 3. Secondary Promo Banner: Pamper Your Pet with the Best! (Left side text, Right side image) */}
+      {featuredSections.homeServicesFeaturedEnabled && (
       <section className="relative rounded-3xl overflow-hidden bg-[#0C1015] text-white p-4 sm:p-6 md:p-8 shadow-xl border border-slate-800 group">
         
         {/* Ambient floating bubbles effect */}
@@ -267,6 +333,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Trust Features Banner */}
       <section className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 py-4 sm:py-5 px-1 shadow-sm overflow-hidden mb-6 sm:mb-8">
@@ -308,6 +375,7 @@ export default function HomePage() {
       </section>
 
       {/* 4. Top Picks For You (Deals of the Day style) */}
+      {featuredSections.flashDealsEnabled && (
       <section className="bg-white rounded-[24px] sm:rounded-[32px] border border-slate-200/80 p-4 sm:p-6 shadow-sm mb-4">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div className="flex items-center gap-2 sm:gap-4">
@@ -338,6 +406,7 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+      )}
 
       {/* 5. Best Sellers */}
       <section className="bg-gradient-to-br from-[#FFF8F1] to-[#FFF1E5] rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 shadow-sm border border-orange-100">
@@ -366,6 +435,7 @@ export default function HomePage() {
       </section>
 
       {/* 6. Trending Now */}
+      {featuredSections.trendingCategoriesEnabled && (
       <section className="bg-gradient-to-br from-[#F5F8FF] to-[#EBF0FF] rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 shadow-sm border border-blue-100">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div className="flex items-center gap-2">
@@ -390,6 +460,7 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+      )}
 
       {/* Interactive Booking Modal */}
       {selectedSalonForBooking && (

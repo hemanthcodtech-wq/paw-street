@@ -101,11 +101,6 @@ export default function ProductCard({ product, layout = 'grid' }) {
                 <span>{product.rating}</span>
                 <span className="text-[10px] text-slate-400 font-normal">({product.reviewsCount > 999 ? '1.2k' : (product.reviewsCount || 140)})</span>
               </div>
-              <span className="text-slate-300">•</span>
-              <div className="flex items-center gap-0.5 text-emerald-600 font-bold">
-                <Zap className="w-3 h-3 fill-emerald-600" />
-                <span>15 mins</span>
-              </div>
             </div>
           </div>
           
@@ -159,14 +154,6 @@ export default function ProductCard({ product, layout = 'grid' }) {
       {/* Top Media Container */}
       <div className="relative aspect-square w-full bg-white overflow-hidden flex items-center justify-center p-2">
         
-        {/* Instant delivery pill */}
-        {product.isInstantDelivery && (
-          <div className="absolute top-1 left-1 z-10 bg-[#F59E0B] text-white text-[9px] sm:text-[11px] font-black px-1.5 sm:px-2.5 py-0.5 rounded-full flex items-center gap-0.5 sm:gap-1 shadow-xs">
-            <Zap className="w-2.5 h-2.5 fill-white" />
-            <span>{product.deliveryTimeMinutes || 15}m</span>
-          </div>
-        )}
-
         {/* Wishlist Button */}
         <button
           onClick={(e) => {

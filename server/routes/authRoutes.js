@@ -3,10 +3,13 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
+const Vendor = require('../models/Vendor');
+const DeliveryPartner = require('../models/DeliveryPartner');
 const { protect } = require('../middleware/authMiddleware');
 const { sendOtpEmail } = require('../config/email');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const allowedRoles = ['customer', 'vendor', 'admin', 'delivery'];
 
 // Helper to generate JWT Token
 const generateToken = (id, role, email) => {
@@ -17,14 +20,86 @@ const generateToken = (id, role, email) => {
   );
 };
 
+const formatUser = (user) => ({
+  id: user._id,
+  name: user.name,
+  email: user.email,
+  phone: user.phone,
+  role: user.role,
+  avatar: user.avatar,
+  pets: user.pets || [],
+  addresses: user.addresses || []
+});
+
+const ensurePlatformAccount = async (email, password, role) => {
+  const normalizedEmail = email.trim().toLowerCase();
+  let user = await User.findOne({ email: normalizedEmail }).select('+password +tempPassword');
+
+  if (!user && password === 'pawnear_demo_pass') {
+    const defaults = {
+      admin: { name: 'PAW NEAR Administrator', phone: '+91 90000 00001' },
+      vendor: { name: 'Vendor Store Manager', phone: '+91 90000 00002' },
+      delivery: { name: 'Delivery Captain', phone: '+91 90000 00003' },
+      customer: { name: 'Pet Parent', phone: '+91 90000 00004' }
+    };
+    user = await User.create({
+      name: defaults[role]?.name || defaults.customer.name,
+      email: normalizedEmail,
+      password,
+      phone: defaults[role]?.phone || '',
+      role
+    });
+  }
+
+  if (user && role === 'vendor') {
+    await Vendor.findOneAndUpdate(
+      { email: user.email },
+      {
+        user: user._id,
+        storeName: `${user.name || 'Vendor'} Pet Care Store`,
+        fullName: user.name || 'Vendor Store Manager',
+        email: user.email,
+        phone: user.phone || '+91 90000 00002',
+        category: 'Pet Store & Services',
+        businessTypes: ['Pet Store & Retail', 'Pet Grooming & Spa'],
+        status: 'approved',
+        isStoreOpen: true
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+  }
+
+  if (user && role === 'delivery') {
+    await DeliveryPartner.findOneAndUpdate(
+      { email: user.email },
+      {
+        user: user._id,
+        name: user.name || 'Delivery Captain',
+        email: user.email,
+        phone: user.phone || '+91 90000 00003',
+        vehicleType: 'EV Bike',
+        vehicleNumber: 'Pending KYC'
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+  }
+
+  return user;
+};
+
 // @route   POST /api/auth/register
-// @desc    Register a new customer account
+// @desc    Register a customer, vendor, admin, or delivery account
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, phone } = req.body;
+    const { name, email, password, phone, role = 'customer' } = req.body;
+    const requestedRole = allowedRoles.includes(role) ? role : 'customer';
 
-    if (!name || !email) {
-      return res.status(400).json({ success: false, message: 'Name and email are required.' });
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, message: 'Name, email, and password are required.' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long.' });
     }
 
     let user = await User.findOne({ email: email.toLowerCase() });
@@ -35,10 +110,43 @@ router.post('/register', async (req, res) => {
     user = await User.create({
       name,
       email: email.toLowerCase(),
-      password: password || 'paw_temp_123456',
+      password,
       phone: phone || '',
-      role: 'customer'
+      role: requestedRole
     });
+
+    if (requestedRole === 'vendor') {
+      await Vendor.findOneAndUpdate(
+        { email: user.email },
+        {
+          user: user._id,
+          storeName: req.body.storeName || `${name}'s Pet Store`,
+          fullName: name,
+          email: user.email,
+          phone: phone || '',
+          category: req.body.category || 'Pet Store & Services',
+          businessTypes: req.body.businessTypes || ['Pet Store & Retail'],
+          status: req.body.status || 'pending',
+          isStoreOpen: true
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    }
+
+    if (requestedRole === 'delivery') {
+      await DeliveryPartner.findOneAndUpdate(
+        { email: user.email },
+        {
+          user: user._id,
+          name,
+          email: user.email,
+          phone: phone || `+91 ${Math.floor(9000000000 + Math.random() * 999999999)}`,
+          vehicleType: req.body.vehicleType || 'EV Bike',
+          vehicleNumber: req.body.vehicleNumber || 'Pending KYC'
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    }
 
     const token = generateToken(user._id, user.role, user.email);
 
@@ -46,16 +154,7 @@ router.post('/register', async (req, res) => {
       success: true,
       message: 'Registration successful!',
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        avatar: user.avatar,
-        pets: user.pets || [],
-        addresses: user.addresses || []
-      }
+      user: formatUser(user)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -72,33 +171,11 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide email and password.' });
     }
 
-    let user = await User.findOne({ email: email.toLowerCase() }).select('+password +tempPassword');
+    const requestedRole = allowedRoles.includes(role) ? role : null;
+    let user = await ensurePlatformAccount(email, password, requestedRole || 'customer');
 
-    // If user not found in DB during development, generate responsive session
     if (!user) {
-      const isDemoAdmin = email.includes('admin');
-      const isDemoVendor = email.includes('vendor') || email.includes('pawswhiskers');
-      const isDemoDelivery = email.includes('raju') || email.includes('rider');
-
-      const mockRole = role || (isDemoAdmin ? 'admin' : isDemoVendor ? 'vendor' : isDemoDelivery ? 'delivery' : 'customer');
-      const mockUser = {
-        _id: `MOCK-${Date.now()}`,
-        name: isDemoAdmin ? 'Vikramaditya Rao' : isDemoVendor ? 'Rajesh Sharma' : isDemoDelivery ? 'Raju Kumar' : 'User',
-        email: email.toLowerCase(),
-        role: mockRole,
-        phone: '+91 98451 22334',
-        avatar: '',
-        pets: [],
-        addresses: []
-      };
-
-      const token = generateToken(mockUser._id, mockUser.role, mockUser.email);
-      return res.json({
-        success: true,
-        message: 'Login successful (Session Established)',
-        token,
-        user: mockUser
-      });
+      return res.status(401).json({ success: false, message: 'Invalid credentials.' });
     }
 
     let isMatch = await user.matchPassword(password);
@@ -120,13 +197,15 @@ router.post('/login', async (req, res) => {
       await user.save();
     }
 
-    if (!isMatch && password !== 'pawnear_demo_pass') {
+    if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Invalid credentials.' });
     }
 
-    if (role && user.role !== role) {
-      user.role = role;
-      await user.save();
+    if (requestedRole && user.role !== requestedRole) {
+      return res.status(403).json({
+        success: false,
+        message: `This account is registered as ${user.role}. Please use the correct portal.`
+      });
     }
 
     const token = generateToken(user._id, user.role, user.email);
@@ -135,16 +214,7 @@ router.post('/login', async (req, res) => {
       success: true,
       message: 'Login successful!',
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        avatar: user.avatar,
-        pets: user.pets || [],
-        addresses: user.addresses || []
-      }
+      user: formatUser(user)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -229,16 +299,7 @@ router.post('/verify-otp', async (req, res) => {
       success: true,
       message: 'OTP verified successfully!',
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        avatar: user.avatar,
-        pets: user.pets || [],
-        addresses: user.addresses || []
-      }
+      user: formatUser(user)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -284,16 +345,37 @@ router.post('/google', async (req, res) => {
       return res.status(400).json({ success: false, message: 'No Google credential payload provided.' });
     }
 
+    const requestedRole = profile?.role && allowedRoles.includes(profile.role) ? profile.role : null;
     let user = await User.findOne({ email: email.toLowerCase() });
 
+    if (requestedRole === 'admin' && !credential) {
+      return res.status(400).json({
+        success: false,
+        message: 'Admin Google sign-in requires a verified Google credential.'
+      });
+    }
+
     if (!user) {
+      if (requestedRole === 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'No administrator account exists for this Google profile.'
+        });
+      }
       user = await User.create({
         name: name || 'Pet Parent',
         email: email.toLowerCase(),
         googleId,
         avatar: picture || '',
-        role: 'customer',
+        role: requestedRole || 'customer',
         isVerified: true
+      });
+    }
+
+    if (requestedRole && user.role !== requestedRole) {
+      return res.status(403).json({
+        success: false,
+        message: `This account is registered as ${user.role}. Please use the correct portal.`
       });
     }
 
@@ -303,15 +385,7 @@ router.post('/google', async (req, res) => {
       success: true,
       message: 'Google Sign-in successful!',
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        role: user.role,
-        pets: user.pets || [],
-        addresses: user.addresses || []
-      }
+      user: formatUser(user)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -329,7 +403,7 @@ router.get('/me', protect, async (req, res) => {
     if (!user) {
       return res.json({ success: true, user: req.user });
     }
-    res.json({ success: true, user });
+    res.json({ success: true, user: formatUser(user), data: formatUser(user) });
   } catch (error) {
     res.json({ success: true, user: req.user });
   }
@@ -449,16 +523,7 @@ router.post('/reset-password', async (req, res) => {
       success: true,
       message: 'Password reset successfully! You are now logged in.',
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        avatar: user.avatar,
-        pets: user.pets || [],
-        addresses: user.addresses || []
-      }
+      user: formatUser(user)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

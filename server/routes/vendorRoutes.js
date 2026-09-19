@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const Vendor = require('../models/Vendor');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const User = require('../models/User');
 const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 
 const escapeRegex = (str) => (str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -162,29 +163,91 @@ router.post('/onboarding', async (req, res) => {
       bankDetails
     } = req.body;
 
+    const missingFields = [];
+    if (!fullName) missingFields.push('fullName');
+    if (!email) missingFields.push('email');
+    if (!phone) missingFields.push('phone');
+    if (!storeName) missingFields.push('storeName');
+    if (!Array.isArray(businessTypes) || businessTypes.length === 0) missingFields.push('businessTypes');
+    if (!storeLicenceNumber) missingFields.push('storeLicenceNumber');
+    if (!panNumber) missingFields.push('panNumber');
+    if (!aadhaarNumber) missingFields.push('aadhaarNumber');
+    if (!kycDocs?.tradeLicenceUrl) missingFields.push('kycDocs.tradeLicenceUrl');
+    if (!kycDocs?.panCardUrl) missingFields.push('kycDocs.panCardUrl');
+    if (!kycDocs?.aadhaarUrl) missingFields.push('kycDocs.aadhaarUrl');
+    if (!bankDetails?.accountHolderName) missingFields.push('bankDetails.accountHolderName');
+    if (!bankDetails?.bankName) missingFields.push('bankDetails.bankName');
+    if (!bankDetails?.accountNumber) missingFields.push('bankDetails.accountNumber');
+    if (!bankDetails?.ifscCode) missingFields.push('bankDetails.ifscCode');
+    if (!location?.address) missingFields.push('location.address');
+    if (!location?.city) missingFields.push('location.city');
+    if (!location?.pincode) missingFields.push('location.pincode');
+    if (!photos?.storeFront) missingFields.push('photos.storeFront');
+    if (!photos?.interior) missingFields.push('photos.interior');
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Please complete all required onboarding fields: ${missingFields.join(', ')}.`
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingVendor = await Vendor.findOne({ email: normalizedEmail });
+    if (existingVendor) {
+      return res.status(400).json({
+        success: false,
+        message: 'A vendor application already exists for this email address.'
+      });
+    }
+
+    let user = await User.findOne({ email: normalizedEmail }).select('+password +tempPassword');
+    const initialPassword = req.body.password || 'Paw123!2026';
+
+    if (!user) {
+      user = await User.create({
+        name: fullName,
+        email: normalizedEmail,
+        password: initialPassword,
+        tempPassword: initialPassword,
+        phone,
+        role: 'vendor'
+      });
+    } else {
+      user.name = user.name || fullName;
+      user.phone = user.phone || phone;
+      user.role = 'vendor';
+      if (!user.password) {
+        user.password = initialPassword;
+        user.tempPassword = initialPassword;
+      }
+      await user.save();
+    }
+
     const vendor = await Vendor.create({
+      user: user._id,
       storeName,
       fullName,
-      email: email.trim().toLowerCase(),
+      email: normalizedEmail,
       phone,
       category: category || 'Pet Store & Services',
-      businessTypes: businessTypes || ['Pet Store & Retail'],
-      location: location || { address: 'Hyderabad', city: 'Hyderabad', pincode: '500034' },
-      photos: photos || { storeFront: '/images/hero_pets.jpg', logo: '/images/cat_food.jpg' },
-      storeLicenceNumber: storeLicenceNumber || `LIC-${Date.now()}`,
-      panNumber: panNumber || 'ABCPS1234D',
-      aadhaarNumber: aadhaarNumber || 'XXXX-XXXX-8921',
-      kycDocs: kycDocs || {},
-      serviceDeliveryModes: serviceDeliveryModes || { homeServiceEnabled: true, clinicVisitEnabled: true, homeServiceFee: 99 },
-      bankDetails: bankDetails || {},
+      businessTypes,
+      location,
+      photos,
+      storeLicenceNumber,
+      panNumber,
+      aadhaarNumber,
+      kycDocs,
+      serviceDeliveryModes: serviceDeliveryModes || {},
+      bankDetails,
       status: 'pending',
-      isStoreOpen: true,
+      isStoreOpen: false,
       deliveryTeam: []
     });
 
     res.status(201).json({
       success: true,
-      message: 'Vendor onboarding submitted successfully! Admin will review your KYC.',
+      message: 'Vendor onboarding submitted successfully! Admin will review your KYC. You can log in with your email and onboarding password.',
       vendor
     });
   } catch (error) {
@@ -202,6 +265,25 @@ router.get('/', async (req, res) => {
       count: vendors.length,
       vendors
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @route   GET /api/vendors/:id
+// @desc    Get a single approved vendor/store profile for storefront pages
+router.get('/:id([a-fA-F\\d]{24})', async (req, res) => {
+  try {
+    if (!isMongoObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor id.' });
+    }
+
+    const vendor = await Vendor.findOne({ _id: req.params.id, status: 'approved' }).select('-bankDetails -kycDocs');
+    if (!vendor) {
+      return res.status(404).json({ success: false, message: 'Vendor store not found.' });
+    }
+
+    res.json({ success: true, vendor });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -458,6 +540,9 @@ router.put('/products/:id', protect, authorizeRoles('vendor', 'admin'), async (r
     }
 
     const updates = { ...req.body };
+    delete updates.vendor;
+    delete updates.vendorName;
+    delete updates._id;
     if (updates.name && !updates.title) updates.title = updates.name;
     if (updates.stockCount !== undefined) updates.stock = updates.stockCount;
     if (updates.image && !updates.primaryImage) updates.primaryImage = updates.image;
@@ -567,6 +652,7 @@ router.get('/orders', protect, authorizeRoles('vendor', 'admin'), async (req, re
 
       const isService = displayItems.some(i => i.type === 'service');
       const serviceItem = displayItems.find(i => i.type === 'service');
+      const appointmentMode = o.appointment?.mode || (serviceItem?.serviceMode === 'Clinic Visit' ? 'clinic_visit' : 'home_service');
 
       // Status mapping
       const mappedStatus =
@@ -579,14 +665,14 @@ router.get('/orders', protect, authorizeRoles('vendor', 'admin'), async (req, re
       return {
         _id: o._id,
         id: o.orderId || o._id.toString(),
-        orderType: isService ? (serviceItem?.serviceMode === 'Clinic Visit' ? 'clinic_visit' : 'home_service') : 'product_delivery',
-        serviceCategory: isService ? 'Veterinary & Grooming' : 'Retail Pet Care',
-        serviceName: isService ? (serviceItem?.title || 'Pet Service') : null,
-        petName: 'Pet Parent Request',
+        orderType: isService ? appointmentMode : 'product_delivery',
+        serviceCategory: isService ? (o.appointment?.serviceCategory || 'Veterinary & Grooming') : 'Retail Pet Care',
+        serviceName: isService ? (o.appointment?.serviceName || serviceItem?.title || 'Pet Service') : null,
+        petName: o.appointment?.petName || (isService ? 'Pet Parent Request' : ''),
         customerName: o.customerName || 'Pet Parent',
         customerPhone: o.customerPhone || '+91 98451 22334',
         customerAddress: o.shippingAddress?.street ? `${o.shippingAddress.street}, ${o.shippingAddress.city}` : 'Hyderabad Delivery Area',
-        scheduledSlot: isService ? 'Today, Immediate Slot' : 'Instant 15-Min Delivery',
+        scheduledSlot: isService ? (o.appointment?.scheduledSlot || 'Today, Immediate Slot') : 'Instant 15-Min Delivery',
         items: displayItems.map(i => ({
           id: i.product?.toString() || 'item-1',
           product: i.product?.toString() || null,
@@ -601,7 +687,8 @@ router.get('/orders', protect, authorizeRoles('vendor', 'admin'), async (req, re
         orderStatus: mappedStatus,
         stockDeducted: !!o.stockDeducted,
         assignedDeliveryBoyId: o.assignedDeliveryBoyId || null,
-        placedAt: o.createdAt || new Date().toISOString()
+        placedAt: o.createdAt || new Date().toISOString(),
+        notes: o.appointment?.notes || ''
       };
     });
 

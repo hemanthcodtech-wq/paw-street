@@ -9,7 +9,7 @@ const PlatformCMS = require('../models/PlatformCMS');
 const SupportTicket = require('../models/SupportTicket');
 const bcrypt = require('bcryptjs');
 const { uploadToCloudinary } = require('../config/cloudinary');
-const { generateVendorApprovalPDF } = require('../utils/pdfService');
+const { generateVendorApprovalPDFWithCredentials } = require('../utils/pdfService');
 const { sendVendorWelcomeEmail, sendVendorRejectionEmail } = require('../utils/emailService');
 
 // Helper to calculate aggregate metrics from DB
@@ -41,9 +41,8 @@ async function calculateMetrics() {
   ]);
 
   // Compute GMV from completed orders
-  const dbGmv = completedOrders.reduce((sum, o) => sum + (o.pricing?.finalTotal || o.totalAmount || 0), 0);
-  const totalGmv = dbGmv > 0 ? dbGmv : 1845920;
-  const totalOrdersCount = totalOrders > 0 ? totalOrders : 4219;
+  const totalGmv = completedOrders.reduce((sum, o) => sum + (o.pricing?.finalTotal || o.totalAmount || 0), 0);
+  const totalOrdersCount = totalOrders;
   const averageOrderValue = Math.round((totalGmv / (totalOrdersCount || 1)) * 10) / 10;
   const totalNetPlatformProfit = Math.round(totalGmv * 0.135) + (vendorsTotal * 2499);
 
@@ -64,15 +63,231 @@ async function calculateMetrics() {
   };
 }
 
+const maskBankAccount = (vendor) => {
+  const bank = vendor?.bankDetails || {};
+  const account = bank.accountNumber || '';
+  const last4 = account ? account.slice(-4) : '0000';
+  return `${bank.bankName || 'Bank'} ******${last4}`;
+};
+
+const getOrderVendorIds = (order) => {
+  const ids = new Set();
+  if (order.vendor) ids.add(order.vendor.toString());
+  (order.items || []).forEach(item => {
+    if (item.vendorId) ids.add(item.vendorId.toString());
+  });
+  return Array.from(ids).filter(Boolean);
+};
+
+const calculateVendorOrderGross = (order, vendorId) => {
+  const vendorItems = (order.items || []).filter(item => {
+    const itemVendorId = item.vendorId ? item.vendorId.toString() : '';
+    return itemVendorId === vendorId || (!itemVendorId && order.vendor?.toString() === vendorId);
+  });
+
+  const itemGross = vendorItems.reduce((sum, item) => {
+    return sum + ((Number(item.price) || 0) * (Number(item.quantity) || 1));
+  }, 0);
+
+  return itemGross || Number(order.pricing?.subtotal || order.pricing?.total || 0);
+};
+
+async function buildFinanceLedger() {
+  const [vendors, orders] = await Promise.all([
+    Vendor.find(),
+    Order.find({ 'payment.status': 'paid', status: { $ne: 'cancelled' } })
+      .populate('user', 'name email phone')
+      .sort({ createdAt: -1 })
+  ]);
+
+  const vendorMap = new Map(vendors.map(v => [v._id.toString(), v]));
+  const ledgerMap = new Map();
+  const paymentHistory = [];
+
+  orders.forEach(order => {
+    const vendorIds = getOrderVendorIds(order);
+    vendorIds.forEach(vendorId => {
+      const vendor = vendorMap.get(vendorId);
+      if (!vendor) return;
+
+      const grossAmount = calculateVendorOrderGross(order, vendorId);
+      const commissionRate = Number(vendor.commissionRate || order.settlement?.commissionRate || 12);
+      const platformCommission = Math.round((grossAmount * commissionRate) / 100);
+      const vendorNetAmount = Math.max(0, grossAmount - platformCommission);
+      const settlementStatus = order.settlement?.status || 'pending';
+
+      if (!ledgerMap.has(vendorId)) {
+        ledgerMap.set(vendorId, {
+          id: `PO-${vendorId.slice(-6).toUpperCase()}`,
+          vendorId,
+          vendorName: vendor.storeName,
+          period: 'All paid orders',
+          ordersCount: 0,
+          amount: 0,
+          grossAmount: 0,
+          platformCommission: 0,
+          commissionRate,
+          status: 'processed',
+          bankAccount: maskBankAccount(vendor),
+          orders: []
+        });
+      }
+
+      const ledger = ledgerMap.get(vendorId);
+      ledger.ordersCount += 1;
+      ledger.grossAmount += grossAmount;
+      ledger.platformCommission += platformCommission;
+      if (settlementStatus !== 'processed') {
+        ledger.amount += vendorNetAmount;
+        ledger.status = 'pending';
+      }
+
+      const paymentRecord = {
+        orderId: order.orderId,
+        orderMongoId: order._id,
+        vendorId,
+        vendorName: vendor.storeName,
+        customerName: order.customerName || order.user?.name || 'Customer',
+        customerPhone: order.customerPhone || order.user?.phone || '',
+        paymentMethod: order.payment?.method || '',
+        paymentStatus: order.payment?.status || '',
+        razorpayPaymentId: order.payment?.razorpayPaymentId || '',
+        grossAmount,
+        commissionRate,
+        platformCommission,
+        vendorNetAmount,
+        settlementStatus,
+        payoutReference: order.settlement?.payoutReference || '',
+        paidAt: order.settlement?.paidAt || null,
+        createdAt: order.createdAt,
+        appointment: order.appointment || null,
+        status: order.status
+      };
+
+      ledger.orders.push(paymentRecord);
+      paymentHistory.push(paymentRecord);
+    });
+  });
+
+  const payoutQueue = Array.from(ledgerMap.values())
+    .filter(row => row.amount > 0 || row.ordersCount > 0)
+    .sort((a, b) => b.amount - a.amount);
+
+  const totalVendorPayoutsDisbursed = paymentHistory
+    .filter(p => p.settlementStatus === 'processed')
+    .reduce((sum, p) => sum + p.vendorNetAmount, 0);
+  const pendingPayoutsQueue = paymentHistory
+    .filter(p => p.settlementStatus !== 'processed')
+    .reduce((sum, p) => sum + p.vendorNetAmount, 0);
+  const totalNetPlatformProfit = paymentHistory.reduce((sum, p) => sum + p.platformCommission, 0);
+  const totalGmv = paymentHistory.reduce((sum, p) => sum + p.grossAmount, 0);
+
+  return {
+    payoutQueue,
+    paymentHistory,
+    metrics: {
+      totalGmv,
+      totalNetPlatformProfit,
+      totalVendorPayoutsDisbursed,
+      pendingPayoutsQueue,
+      totalOrdersCount: orders.length,
+      averageOrderValue: orders.length ? Math.round((totalGmv / orders.length) * 10) / 10 : 0
+    }
+  };
+}
+
 // ==========================================
 // 1. EXECUTIVE METRICS & DASHBOARD KPI
 // ==========================================
 router.get('/metrics', async (req, res) => {
   try {
-    const metrics = await calculateMetrics();
+    const [metrics, finance] = await Promise.all([
+      calculateMetrics(),
+      buildFinanceLedger()
+    ]);
+    Object.assign(metrics, finance.metrics);
     res.json({ success: true, metrics });
   } catch (error) {
     console.error('Error fetching admin metrics:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/finance-ledger', async (req, res) => {
+  try {
+    const ledger = await buildFinanceLedger();
+    res.json({ success: true, ...ledger });
+  } catch (error) {
+    console.error('Error fetching finance ledger:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.post('/payouts/:vendorId/process', async (req, res) => {
+  try {
+    const vendor = await Vendor.findById(req.params.vendorId);
+    if (!vendor) {
+      return res.status(404).json({ success: false, message: 'Vendor not found.' });
+    }
+
+    const orders = await Order.find({
+      'payment.status': 'paid',
+      status: { $ne: 'cancelled' },
+      'settlement.status': { $ne: 'processed' },
+      $or: [
+        { vendor: vendor._id },
+        { 'items.vendorId': vendor._id.toString() }
+      ]
+    });
+
+    const commissionRate = Number(req.body.commissionRate || vendor.commissionRate || 12);
+    const payoutReference = req.body.payoutReference || `PAYOUT-${Date.now()}`;
+    let grossAmount = 0;
+    let platformCommission = 0;
+    let vendorNetAmount = 0;
+
+    for (const order of orders) {
+      const orderGross = calculateVendorOrderGross(order, vendor._id.toString());
+      const orderCommission = Math.round((orderGross * commissionRate) / 100);
+      const orderNet = Math.max(0, orderGross - orderCommission);
+
+      grossAmount += orderGross;
+      platformCommission += orderCommission;
+      vendorNetAmount += orderNet;
+
+      order.settlement = {
+        ...(order.settlement?.toObject ? order.settlement.toObject() : order.settlement),
+        status: 'processed',
+        vendorGrossAmount: orderGross,
+        platformCommission: orderCommission,
+        vendorNetAmount: orderNet,
+        commissionRate,
+        payoutReference,
+        paidAt: new Date(),
+        paidBy: req.user?._id || null
+      };
+      await order.save();
+    }
+
+    const ledger = await buildFinanceLedger();
+
+    res.json({
+      success: true,
+      message: `Vendor payout processed for ${vendor.storeName}.`,
+      payout: {
+        vendorId: vendor._id,
+        vendorName: vendor.storeName,
+        payoutReference,
+        ordersCount: orders.length,
+        grossAmount,
+        platformCommission,
+        vendorNetAmount,
+        paidAt: new Date()
+      },
+      ...ledger
+    });
+  } catch (error) {
+    console.error('Error processing vendor payout:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -187,7 +402,7 @@ router.put('/vendors/:id/approve', async (req, res) => {
     }
 
     // 2. Generate PDF Certificate & Application Record
-    const pdfBuffer = await generateVendorApprovalPDF(vendor);
+    const pdfBuffer = await generateVendorApprovalPDFWithCredentials(vendor, autoPassword);
     
     // 3. Upload PDF to Cloudinary
     let pdfUrl = '';
@@ -368,6 +583,7 @@ router.get('/cms', async (req, res) => {
         topAnnouncement: {
           text: '🎉 PAW FEST 2026: Flat 20% OFF on all Pet Food & Free Vet Consultation on orders above ₹999! Code: PAWFEST20',
           badge: '⚡ FLASH SALE',
+          linkText: 'Claim Offer',
           link: '/products',
           isActive: true
         },
@@ -379,6 +595,7 @@ router.get('/cms', async (req, res) => {
             tag: '⚡ FLASH DELIVERY',
             image: '/images/promo_puppy.jpg',
             link: '/products',
+            ctaText: 'Shop Pet Food',
             bgColor: 'from-amber-500 via-amber-600 to-orange-600',
             isActive: true
           },
@@ -389,6 +606,7 @@ router.get('/cms', async (req, res) => {
             tag: '✂️ HOME VISIT',
             image: '/images/promo_banner_main.jpg',
             link: '/services',
+            ctaText: 'Book Grooming',
             bgColor: 'from-teal-600 via-emerald-600 to-teal-800',
             isActive: true
           },
@@ -399,10 +617,18 @@ router.get('/cms', async (req, res) => {
             tag: '🩺 24/7 VET CARE',
             image: '/images/store_vet.jpg',
             link: '/services',
+            ctaText: 'Find Nearest Clinic',
             bgColor: 'from-blue-600 via-indigo-600 to-purple-700',
             isActive: true
           }
         ],
+        featuredSections: {
+          flashDealsEnabled: true,
+          popularNearYouEnabled: true,
+          homeServicesFeaturedEnabled: true,
+          trendingCategoriesEnabled: true,
+          emergencyVetBannerEnabled: true
+        },
         categoryCommissions: {
           'Pet Food & Nutrition': 10,
           'Pet Accessories & Toys': 15,
@@ -428,6 +654,7 @@ router.get('/cms', async (req, res) => {
             discountPercent: 50,
             maxDiscount: 150,
             minOrderValue: 299,
+            description: '50% off on your first order with PAW NEAR',
             isActive: true
           },
           {
@@ -435,6 +662,7 @@ router.get('/cms', async (req, res) => {
             discountPercent: 20,
             maxDiscount: 300,
             minOrderValue: 799,
+            description: '20% off on all pet food and wellness products',
             isActive: true
           },
           {
@@ -442,6 +670,7 @@ router.get('/cms', async (req, res) => {
             discountPercent: 100,
             maxDiscount: 299,
             minOrderValue: 999,
+            description: 'Free home visit doctor booking on bulk supplies',
             isActive: true
           }
         ]

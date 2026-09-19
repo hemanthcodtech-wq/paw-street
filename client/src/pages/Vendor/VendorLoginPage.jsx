@@ -78,6 +78,9 @@ export default function VendorLoginPage() {
           localStorage.setItem('paw_vendor_token', res.token);
           localStorage.setItem('paw_token', res.token);
         }
+        if (res.user) {
+          localStorage.setItem('paw_user', JSON.stringify({ ...res.user, isLoggedIn: true }));
+        }
         setApprovalStatus('approved');
         navigate('/vendor/dashboard');
       } else {
@@ -97,12 +100,16 @@ export default function VendorLoginPage() {
       const res = await api.googleAuth(null, {
         email: 'vendor@pawnear.com',
         name: 'Vendor Store Manager',
-        id: `GOOGLE-VENDOR-${Date.now()}`
+        id: `GOOGLE-VENDOR-${Date.now()}`,
+        role: 'vendor'
       });
       if (res && res.success) {
         if (res.token) {
           localStorage.setItem('paw_vendor_token', res.token);
           localStorage.setItem('paw_token', res.token);
+        }
+        if (res.user) {
+          localStorage.setItem('paw_user', JSON.stringify({ ...res.user, isLoggedIn: true }));
         }
         setApprovalStatus('approved');
         navigate('/vendor/dashboard');
@@ -175,6 +182,9 @@ export default function VendorLoginPage() {
         if (res.token) {
           localStorage.setItem('paw_vendor_token', res.token);
           localStorage.setItem('paw_token', res.token);
+        }
+        if (res.user) {
+          localStorage.setItem('paw_user', JSON.stringify({ ...res.user, isLoggedIn: true }));
         }
         setApprovalStatus('approved');
         setTimeout(() => {

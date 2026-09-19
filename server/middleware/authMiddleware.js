@@ -24,16 +24,20 @@ const protect = async (req, res, next) => {
       process.env.JWT_SECRET || 'pawnear_super_secure_jwt_token_secret_key_2026_pawstreet'
     );
 
-    // Try finding user from DB
-    try {
-      req.user = await User.findById(decoded.id).select('-password');
-    } catch (dbErr) {
-      // Fallback if DB is disconnected in dev
-      req.user = { _id: decoded.id, role: decoded.role || 'customer', email: decoded.email };
+    if (!decoded.id || !/^[a-f\d]{24}$/i.test(decoded.id)) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid authentication token subject.'
+      });
     }
 
+    req.user = await User.findById(decoded.id).select('-password');
+
     if (!req.user) {
-      req.user = { _id: decoded.id, role: decoded.role || 'customer', email: decoded.email };
+      return res.status(401).json({
+        success: false,
+        message: 'Authenticated user no longer exists.'
+      });
     }
 
     next();

@@ -59,14 +59,16 @@ export function OrderProvider({ children }) {
   const placeOrder = async (orderData) => {
     const newId = `ORD-${Math.floor(10000 + Math.random() * 90000)}`;
     const addr = orderData.deliveryAddress || {};
+    const hasService = (orderData.items || []).some(item => item.type === 'service' || item.isService);
+    const appointment = orderData.appointment || {};
 
     // Frontend display order object
     const newOrder = {
-      id: newId,
+      id: hasService ? newId.replace('ORD-', 'BKG-') : newId,
       date: 'Just now',
       timestamp: Date.now(),
       status: 'placed',
-      statusLabel: 'Order Placed',
+      statusLabel: hasService ? 'Appointment Booked' : 'Order Placed',
       deliveryType: orderData.deliverySpeed || 'Instant 20-Min Express',
       store: {
         name: 'Paws & Whiskers Supermart',
@@ -104,16 +106,18 @@ export function OrderProvider({ children }) {
       customerEmail: orderData.customerEmail || '',
       customerPhone: addr.phone || orderData.customerPhone || '+91 98451 22334',
       items: (orderData.items || []).map(item => ({
-        id: item.id,
+        id: item.id || item._id || item.product,
+        product: item.product || item._id || item.id,
         name: item.name || item.shortName,
         title: item.name || item.shortName || 'Pet Product',
         image: item.image || '/images/prod_pedigree.jpg',
         price: item.price,
         quantity: item.quantity,
-        vendorId: item.vendorId || '',
-        vendorName: item.storeName || '',
-        type: item.type || 'product',
-        selectedSize: item.selectedSize || item.size || ''
+        vendorId: item.vendorId || item.vendor || '',
+        vendorName: item.storeName || item.vendorName || '',
+        type: item.type || (item.isService ? 'service' : 'product'),
+        selectedSize: item.selectedSize || item.size || '',
+        serviceMode: item.serviceMode || item.selectedSize || item.size || ''
       })),
       shippingAddress: {
         street: addr.addressLine1 || addr.shortDisplay || 'Hyderabad',
@@ -125,12 +129,21 @@ export function OrderProvider({ children }) {
       pricing: {
         subtotal: orderData.itemsTotal || 0,
         deliveryFee: orderData.deliveryFee || 0,
+        tax: orderData.platformFee || 0,
         discount: orderData.couponDiscount || 0,
         total: orderData.finalTotal || 0
       },
       payment: {
         method: orderData.paymentMethod === 'Cash on Delivery' ? 'COD' : 'RAZORPAY_ONLINE',
         status: orderData.paymentMethod === 'Cash on Delivery' ? 'pending' : 'paid'
+      },
+      appointment: {
+        mode: appointment.mode || (hasService ? 'home_service' : 'product_delivery'),
+        scheduledSlot: appointment.scheduledSlot || (hasService ? orderData.deliverySpeed : ''),
+        petName: appointment.petName || '',
+        serviceCategory: appointment.serviceCategory || '',
+        serviceName: appointment.serviceName || '',
+        notes: appointment.notes || ''
       }
     };
 

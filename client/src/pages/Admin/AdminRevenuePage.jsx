@@ -26,6 +26,7 @@ export default function AdminRevenuePage() {
     updateDeliveryPricing, 
     updateOnboardingFees,
     payoutQueue,
+    paymentHistory,
     processPayout
   } = useAdmin();
 
@@ -372,6 +373,78 @@ export default function AdminRevenuePage() {
                   </td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Admin Payment History */}
+      <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="font-heading font-black text-base text-slate-900">
+              Order Payment History & Vendor Earnings
+            </h3>
+            <p className="text-xs text-slate-500">
+              Full paid-order ledger with customer payment, commission, vendor net amount, and payout status.
+            </p>
+          </div>
+          <span className="text-xs font-bold bg-slate-100 text-slate-700 px-3 py-1 rounded-xl shrink-0 self-start sm:self-center">
+            {paymentHistory?.length || 0} Paid Records
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 text-slate-400 text-[11px] font-bold">
+                <th className="py-2.5 px-3">ORDER</th>
+                <th className="py-2.5 px-3">CUSTOMER</th>
+                <th className="py-2.5 px-3">VENDOR</th>
+                <th className="py-2.5 px-3">PAYMENT</th>
+                <th className="py-2.5 px-3">GROSS</th>
+                <th className="py-2.5 px-3">COMMISSION</th>
+                <th className="py-2.5 px-3">VENDOR NET</th>
+                <th className="py-2.5 px-3">PAYOUT</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {(paymentHistory || []).slice(0, 25).map((payment) => (
+                <tr key={`${payment.orderId}-${payment.vendorId}`} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="py-3 px-3 font-mono font-bold text-slate-900">{payment.orderId}</td>
+                  <td className="py-3 px-3">
+                    <span className="font-bold text-slate-800 block">{payment.customerName}</span>
+                    <span className="text-[10px] text-slate-400">{payment.customerPhone}</span>
+                  </td>
+                  <td className="py-3 px-3 font-bold text-slate-800">{payment.vendorName}</td>
+                  <td className="py-3 px-3">
+                    <span className="font-bold text-slate-700 block">{payment.paymentMethod}</span>
+                    <span className="text-[10px] text-emerald-600 font-bold">{payment.paymentStatus}</span>
+                  </td>
+                  <td className="py-3 px-3 font-black text-slate-900">₹{Number(payment.grossAmount || 0).toLocaleString('en-IN')}</td>
+                  <td className="py-3 px-3 text-rose-600 font-bold">
+                    ₹{Number(payment.platformCommission || 0).toLocaleString('en-IN')}
+                    <span className="text-[10px] text-slate-400 ml-1">({payment.commissionRate}%)</span>
+                  </td>
+                  <td className="py-3 px-3 font-black text-emerald-600">₹{Number(payment.vendorNetAmount || 0).toLocaleString('en-IN')}</td>
+                  <td className="py-3 px-3">
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                      payment.settlementStatus === 'processed'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-amber-100 text-amber-900'
+                    }`}>
+                      {payment.settlementStatus === 'processed' ? 'Paid to Vendor' : 'Pending'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {(!paymentHistory || paymentHistory.length === 0) && (
+                <tr>
+                  <td colSpan={8} className="py-8 text-center text-slate-400 font-bold">
+                    No paid order records yet.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

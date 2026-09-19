@@ -22,11 +22,18 @@ import { useVendor } from '../../context/VendorContext';
 import Logo from '../common/Logo';
 
 export default function VendorLayout({ children }) {
-  const { vendor, metrics, toggleStoreOpen, setApprovalStatus } = useVendor();
+  const { vendor, metrics, toggleStoreOpen, setApprovalStatus, isLoading } = useVendor();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showDemoApprovalBanner, setShowDemoApprovalBanner] = useState(true);
+
+  React.useEffect(() => {
+    // If not loading, and vendor ID is empty, they need to onboard
+    if (!isLoading && (!vendor.id && vendor.storeName === '')) {
+      navigate('/vendor/onboarding');
+    }
+  }, [isLoading, vendor.id, vendor.storeName, navigate]);
 
   const navItems = [
     {

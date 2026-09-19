@@ -64,6 +64,7 @@ export const api = {
 
   // 1. Health Check
   getHealth: () => request('/health'),
+  getPlatformCms: () => request('/platform/cms'),
 
   // 2. Authentication & Google Auth
   register: (body) => request('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
@@ -81,10 +82,18 @@ export const api = {
   getProducts: (params = '') => request(`/products${params ? `?${params}` : ''}`),
   getProductById: (id) => request(`/products/${id}`),
   createProduct: (body) => request('/products', { method: 'POST', body: JSON.stringify(body) }),
-  updateProduct: (id, body) => request(`/products/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  updateProduct: (id, data) => request(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteProduct: (id) => request(`/products/${id}`, { method: 'DELETE' }),
 
-  // 4. Vendor Store Management (Multi-Vendor Isolated)
+  // ----------------------------------------------------------------------
+  // VENDORS
+  // ----------------------------------------------------------------------
+  getVendors: () => request('/vendors'),
+  getVendorById: (id) => request(`/vendors/${id}`),
+
+  // ----------------------------------------------------------------------
+  // PLATFORM & ADMIN
+  // ----------------------------------------------------------------------
   submitVendorOnboarding: (body) => request('/vendors/onboarding', { method: 'POST', body: JSON.stringify(body) }),
   getVendors: () => request('/vendors'),
   getVendorProfile: () => request('/vendors/profile'),
@@ -133,6 +142,8 @@ export const api = {
   updateAdminCms: (body) => request('/admin/cms', { method: 'PUT', body: JSON.stringify(body) }),
   getAdminBusinessSettings: () => request('/admin/business-settings'),
   updateAdminBusinessSettings: (body) => request('/admin/business-settings', { method: 'PUT', body: JSON.stringify(body) }),
+  getAdminFinanceLedger: () => request('/admin/finance-ledger'),
+  processAdminVendorPayout: (vendorId, body = {}) => request(`/admin/payouts/${vendorId}/process`, { method: 'POST', body: JSON.stringify(body) }),
   getAdminSupport: () => request('/admin/support'),
   updateAdminTicket: (id, body) => request(`/admin/support/ticket/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   createAdminTicket: (body) => request('/admin/support/ticket', { method: 'POST', body: JSON.stringify(body) }),

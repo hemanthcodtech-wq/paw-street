@@ -32,11 +32,13 @@ export function AuthProvider({ children }) {
     const token = localStorage.getItem('paw_token');
     if (token) {
       api.getProfile().then(res => {
-        if (res && res.success && res.data) {
-          setUser({ ...res.data, isLoggedIn: true });
-          if (res.data.petProfiles && Array.isArray(res.data.petProfiles)) {
-            setPets(res.data.petProfiles);
-            localStorage.setItem('paw_pets', JSON.stringify(res.data.petProfiles));
+        const profile = res?.user || res?.data;
+        if (res && res.success && profile) {
+          setUser({ ...profile, isLoggedIn: true });
+          const remotePets = profile.pets || profile.petProfiles;
+          if (Array.isArray(remotePets)) {
+            setPets(remotePets);
+            localStorage.setItem('paw_pets', JSON.stringify(remotePets));
           }
         }
       }).catch(err => console.warn('Could not sync remote profile, using cached user.', err));
@@ -147,9 +149,15 @@ export function AuthProvider({ children }) {
 
       if (res && res.success && res.user && res.token) {
         saveAuthSession(res.user, res.token);
+        if (res.user.pets && Array.isArray(res.user.pets)) {
+          setPets(res.user.pets);
+          localStorage.setItem('paw_pets', JSON.stringify(res.user.pets));
+        }
       }
+      return res;
     } catch (err) {
       console.warn('Register API failed', err);
+      return { success: false, message: err.message };
     } finally {
       setLoading(false);
       if (userData.petName) {

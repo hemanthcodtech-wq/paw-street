@@ -101,16 +101,15 @@ router.get('/', async (req, res) => {
 
     let products = [];
     try {
-      products = await Product.find(query).sort({ createdAt: -1 });
-      if (products.length === 0) {
-        // Auto-seed if collection is completely empty
-        const count = await Product.countDocuments();
-        if (count === 0) {
-          products = await Product.insertMany(defaultProducts);
-        }
-      }
+      products = await Product.find(query)
+        .populate('vendor', 'storeName email phone location photos serviceDeliveryModes status isStoreOpen rating')
+        .sort({ createdAt: -1 });
+      products = products.filter(product => {
+        if (!product.vendor) return true;
+        return product.vendor.status === 'approved' && product.vendor.isStoreOpen !== false;
+      });
     } catch (dbErr) {
-      products = defaultProducts;
+      products = [];
     }
 
     res.json({
@@ -129,11 +128,12 @@ router.get('/:id', async (req, res) => {
   try {
     let product = null;
     try {
-      product = await Product.findById(req.params.id);
+      product = await Product.findById(req.params.id)
+        .populate('vendor', 'storeName email phone location photos serviceDeliveryModes status isStoreOpen rating');
     } catch (e) {}
 
     if (!product) {
-      product = defaultProducts.find(p => p.title.toLowerCase().includes(req.params.id.toLowerCase())) || defaultProducts[0];
+      return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
     res.json({ success: true, product });

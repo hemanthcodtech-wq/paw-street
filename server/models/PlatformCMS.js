@@ -5,6 +5,7 @@ const platformCmsSchema = new mongoose.Schema({
   topAnnouncement: {
     text: { type: String, default: '⚡ Lightning 30-Min Delivery on all pet essentials in your neighborhood!' },
     badge: { type: String, default: 'INSTANT' },
+    linkText: { type: String, default: 'Shop Now' },
     link: { type: String, default: '/products' },
     isActive: { type: Boolean, default: true }
   },
@@ -16,9 +17,17 @@ const platformCmsSchema = new mongoose.Schema({
     tag: { type: String, default: 'TRENDING' },
     image: { type: String, default: '/images/hero_pets.jpg' },
     link: { type: String, default: '/products' },
+    ctaText: { type: String, default: 'Explore' },
     bgColor: { type: String, default: 'from-amber-400 to-amber-500' },
     isActive: { type: Boolean, default: true }
   }],
+  featuredSections: {
+    flashDealsEnabled: { type: Boolean, default: true },
+    popularNearYouEnabled: { type: Boolean, default: true },
+    homeServicesFeaturedEnabled: { type: Boolean, default: true },
+    trendingCategoriesEnabled: { type: Boolean, default: true },
+    emergencyVetBannerEnabled: { type: Boolean, default: true }
+  },
   // Category Commissions Matrix (Section 3.2)
   categoryCommissions: {
     type: Map,
@@ -51,6 +60,7 @@ const platformCmsSchema = new mongoose.Schema({
     discountPercent: { type: Number, required: true },
     minOrderValue: { type: Number, default: 299 },
     maxDiscount: { type: Number, default: 150 },
+    description: { type: String, default: '' },
     isActive: { type: Boolean, default: true }
   }]
 }, {

@@ -64,6 +64,20 @@ const orderSchema = new mongoose.Schema({
     isCodCollected: { type: Boolean, default: false },
     codTenderedAmount: { type: Number, default: 0 }
   },
+  settlement: {
+    status: {
+      type: String,
+      enum: ['pending', 'processed'],
+      default: 'pending'
+    },
+    vendorGrossAmount: { type: Number, default: 0 },
+    platformCommission: { type: Number, default: 0 },
+    vendorNetAmount: { type: Number, default: 0 },
+    commissionRate: { type: Number, default: 0 },
+    payoutReference: { type: String, default: '' },
+    paidAt: { type: Date, default: null },
+    paidBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false }
+  },
   status: {
     type: String,
     enum: ['placed', 'confirmed', 'store_preparing', 'assigned_rider', 'picked_up', 'out_for_delivery', 'delivered', 'cancelled'],
@@ -72,6 +86,18 @@ const orderSchema = new mongoose.Schema({
   stockDeducted: {
     type: Boolean,
     default: false
+  },
+  appointment: {
+    mode: {
+      type: String,
+      enum: ['product_delivery', 'home_service', 'clinic_visit', ''],
+      default: ''
+    },
+    scheduledSlot: { type: String, default: '' },
+    petName: { type: String, default: '' },
+    serviceCategory: { type: String, default: '' },
+    serviceName: { type: String, default: '' },
+    notes: { type: String, default: '' }
   },
   deliveryOtp: {
     type: String,

@@ -2,15 +2,36 @@ const express = require('express');
 const router = express.Router();
 const DeliveryPartner = require('../models/DeliveryPartner');
 const Order = require('../models/Order');
+const { protect, authorizeRoles } = require('../middleware/authMiddleware');
+
+const getAuthenticatedRider = async (req) => {
+  const email = (req.user?.email || '').toLowerCase();
+  const userId = req.user?._id;
+  const query = { $or: [] };
+
+  if (userId && /^[a-f\d]{24}$/i.test(userId)) query.$or.push({ user: userId });
+  if (email) query.$or.push({ email });
+
+  let rider = query.$or.length ? await DeliveryPartner.findOne(query) : null;
+  if (!rider && email) {
+    rider = await DeliveryPartner.create({
+      user: /^[a-f\d]{24}$/i.test(userId) ? userId : undefined,
+      name: req.user.name || 'Delivery Captain',
+      email,
+      phone: req.user.phone || `+91 ${Math.floor(9000000000 + Math.random() * 999999999)}`,
+      vehicleType: 'EV Bike',
+      vehicleNumber: 'Pending KYC'
+    });
+  }
+
+  return rider;
+};
 
 // @route   GET /api/delivery/profile
 // @desc    Get rider duty profile
-router.get('/profile', async (req, res) => {
+router.get('/profile', protect, authorizeRoles('delivery', 'admin'), async (req, res) => {
   try {
-    let rider;
-    try {
-      rider = await DeliveryPartner.findOne();
-    } catch (dbErr) {}
+    let rider = await getAuthenticatedRider(req);
 
     if (!rider) {
       rider = {
@@ -46,14 +67,15 @@ router.get('/profile', async (req, res) => {
 
 // @route   PUT /api/delivery/duty-toggle
 // @desc    Toggle Online / Offline status
-router.put('/duty-toggle', async (req, res) => {
+router.put('/duty-toggle', protect, authorizeRoles('delivery', 'admin'), async (req, res) => {
   try {
     const { onlineStatus } = req.body;
-    let rider = await DeliveryPartner.findOneAndUpdate(
-      {},
-      { onlineStatus },
-      { new: true, upsert: true }
-    );
+    let rider = await getAuthenticatedRider(req);
+    if (!rider) {
+      return res.status(404).json({ success: false, message: 'Delivery partner profile not found.' });
+    }
+    rider.onlineStatus = !!onlineStatus;
+    await rider.save();
     res.json({ success: true, message: `Rider is now ${onlineStatus ? 'ONLINE' : 'OFFLINE'}`, rider });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -62,12 +84,12 @@ router.put('/duty-toggle', async (req, res) => {
 
 // @route   POST /api/delivery/reconcile-deposit
 // @desc    Submit cash deposit reference to reconcile cash-in-hand
-router.post('/reconcile-deposit', async (req, res) => {
+router.post('/reconcile-deposit', protect, authorizeRoles('delivery', 'admin'), async (req, res) => {
   try {
-    const { amount, referenceNumber, paymentMethod } = req.body;
-    const numericAmount = parseFloat(amount) || 0;
+    const { amount, depositAmount, referenceNumber, paymentMethod } = req.body;
+    const numericAmount = parseFloat(amount || depositAmount) || 0;
 
-    const rider = await DeliveryPartner.findOne();
+    const rider = await getAuthenticatedRider(req);
     if (rider) {
       rider.cashInHand = Math.max(0, rider.cashInHand - numericAmount);
       await rider.save();

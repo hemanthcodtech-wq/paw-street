@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Sliders, 
@@ -38,6 +38,13 @@ export default function AdminPlatformPage() {
   const [announcementLinkText, setAnnouncementLinkText] = useState(platformContent.announcementBar.linkText);
   const [announcementLinkUrl, setAnnouncementLinkUrl] = useState(platformContent.announcementBar.linkUrl);
   const [announcementSaved, setAnnouncementSaved] = useState(false);
+
+  useEffect(() => {
+    setAnnouncementEnabled(platformContent.announcementBar.enabled);
+    setAnnouncementText(platformContent.announcementBar.text);
+    setAnnouncementLinkText(platformContent.announcementBar.linkText);
+    setAnnouncementLinkUrl(platformContent.announcementBar.linkUrl);
+  }, [platformContent.announcementBar]);
 
   // New Banner Modal State
   const [showAddBannerModal, setShowAddBannerModal] = useState(false);

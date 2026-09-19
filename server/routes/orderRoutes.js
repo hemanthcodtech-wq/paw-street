@@ -104,11 +104,34 @@ router.post('/', protect, async (req, res) => {
       items,
       shippingAddress,
       pricing,
-      payment
+      payment,
+      appointment
     } = req.body;
 
-    const orderId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+    const orderPrefix = (items || []).some(item => item.type === 'service') ? 'BKG' : 'ORD';
+    const orderId = `${orderPrefix}-${Math.floor(100000 + Math.random() * 900000)}`;
     const deliveryOtp = Math.floor(1000 + Math.random() * 9000).toString();
+    const normalizedItems = (items || []).map(item => {
+      const productId = isMongoObjectId(item.product || item.id || item._id) ? (item.product || item.id || item._id) : null;
+      const vendorId = item.vendorId || item.vendor || '';
+      return {
+        product: productId,
+        title: item.name || item.title || 'Pet Product',
+        image: item.image || '/images/prod_drools.jpg',
+        price: Number(item.price) || 0,
+        quantity: Math.max(1, Number(item.quantity) || 1),
+        vendorId: vendorId ? vendorId.toString() : '',
+        vendorName: item.storeName || item.vendorName || '',
+        type: item.type || (item.category === 'Veterinary' || item.isService ? 'service' : 'product'),
+        serviceMode: item.serviceMode || item.selectedSize || item.size || ''
+      };
+    });
+
+    const firstVendorItem = normalizedItems.find(item => item.vendorId && isMongoObjectId(item.vendorId));
+    const serviceItem = normalizedItems.find(item => item.type === 'service');
+    const appointmentMode = appointment?.mode || (serviceItem
+      ? (serviceItem.serviceMode === 'Clinic Visit' ? 'clinic_visit' : 'home_service')
+      : 'product_delivery');
 
     const order = await Order.create({
       orderId,
@@ -116,17 +139,7 @@ router.post('/', protect, async (req, res) => {
       customerName: customerName || 'Pet Parent',
       customerEmail: customerEmail || 'customer@pawnear.com',
       customerPhone: customerPhone || '+91 98451 22334',
-      items: (items || []).map(item => ({
-          product: isMongoObjectId(item.id) ? item.id : null,
-          title: item.name || item.title || 'Pet Product',
-          image: item.image || '/images/prod_drools.jpg',
-          price: item.price || 0,
-          quantity: item.quantity || 1,
-          vendorId: item.vendorId || '',
-          vendorName: item.storeName || item.vendorName || '',
-          type: item.type || (item.category === 'Veterinary' ? 'service' : 'product'),
-          serviceMode: item.selectedSize || ''
-        })),
+      items: normalizedItems,
       shippingAddress: shippingAddress || {
         street: 'Plot 42, Road 36, Jubilee Hills',
         city: 'Hyderabad',
@@ -135,6 +148,15 @@ router.post('/', protect, async (req, res) => {
       pricing: pricing || { subtotal: 999, deliveryFee: 49, total: 1048 },
       payment: payment || { method: 'RAZORPAY_ONLINE', status: 'paid' },
       status: 'placed',
+      vendor: firstVendorItem ? firstVendorItem.vendorId : undefined,
+      appointment: {
+        mode: appointmentMode,
+        scheduledSlot: appointment?.scheduledSlot || '',
+        petName: appointment?.petName || '',
+        serviceCategory: appointment?.serviceCategory || '',
+        serviceName: appointment?.serviceName || serviceItem?.title || '',
+        notes: appointment?.notes || ''
+      },
       deliveryOtp,
       statusTimeline: [
         { status: 'placed', notes: 'Order placed by pet parent.' },

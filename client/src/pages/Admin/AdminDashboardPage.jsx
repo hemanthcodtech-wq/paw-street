@@ -31,6 +31,8 @@ export default function AdminDashboardPage() {
     productsGovernance, 
     revenueMetrics, 
     supportTickets,
+    totalVendorsCount,
+    approvedVendorsCount,
     pendingVendorsCount,
     pendingProductsCount,
     openTicketsCount,
@@ -234,10 +236,10 @@ export default function AdminDashboardPage() {
             </span>
           </div>
           <p className="text-xl sm:text-2xl font-black text-slate-900">
-            {vendors.length} Stores
+            {totalVendorsCount} Stores
           </p>
           <div className="flex items-center gap-1 text-[11px] font-bold text-amber-800">
-            <span>{vendors.filter(v => v.status === 'approved').length} Active</span>
+            <span>{approvedVendorsCount} Active</span>
             <span className="text-slate-400 font-normal">• {pendingVendorsCount} Review</span>
           </div>
         </div>

@@ -12,12 +12,15 @@ import { useVendor } from '../../context/VendorContext';
 export default function ProtectedRoute({ children, role = 'customer' }) {
   const location = useLocation();
   const { user } = useAuth();
-  const { isAuthenticated: isAdminAuthenticated } = useAdmin();
+  const { isAuthenticated: isAdminAuthenticated, isAuthChecking: isAdminAuthChecking } = useAdmin();
   const { isAuthenticated: isDeliveryAuthenticated } = useDelivery();
   const { vendor } = useVendor();
 
   // 1. Admin Role Guard
   if (role === 'admin') {
+    if (isAdminAuthChecking) {
+      return null;
+    }
     if (!isAdminAuthenticated) {
       return <Navigate to="/admin/login" state={{ from: location }} replace />;
     }
@@ -26,7 +29,7 @@ export default function ProtectedRoute({ children, role = 'customer' }) {
 
   // 2. Vendor Role Guard
   if (role === 'vendor') {
-    const isVendorAuth = vendor && (vendor.status === 'approved' || vendor.status === 'pending');
+    const isVendorAuth = !!localStorage.getItem('paw_vendor_token') && vendor && (vendor.status === 'approved' || vendor.status === 'pending');
     if (!isVendorAuth) {
       return <Navigate to="/vendor/login" state={{ from: location }} replace />;
     }
