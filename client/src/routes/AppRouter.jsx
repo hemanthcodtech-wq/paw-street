@@ -37,7 +37,6 @@ const AdminVendorsPage = lazy(() => import('../pages/Admin/AdminVendorsPage'));
 const AdminProductsPage = lazy(() => import('../pages/Admin/AdminProductsPage'));
 const AdminRevenuePage = lazy(() => import('../pages/Admin/AdminRevenuePage'));
 const AdminPlatformPage = lazy(() => import('../pages/Admin/AdminPlatformPage'));
-const AdminSupportPage = lazy(() => import('../pages/Admin/AdminSupportPage'));
 
 // 4. Delivery Module Pages & Layout (Lazy Loaded)
 const DeliveryLayout = lazy(() => import('../components/delivery/DeliveryLayout'));
@@ -102,7 +101,6 @@ export default function AppRouter() {
           <Route path="/admin/products" element={<ProtectedRoute role="admin"><AdminLayout><AdminProductsPage /></AdminLayout></ProtectedRoute>} />
           <Route path="/admin/revenue" element={<ProtectedRoute role="admin"><AdminLayout><AdminRevenuePage /></AdminLayout></ProtectedRoute>} />
           <Route path="/admin/platform" element={<ProtectedRoute role="admin"><AdminLayout><AdminPlatformPage /></AdminLayout></ProtectedRoute>} />
-          <Route path="/admin/support" element={<ProtectedRoute role="admin"><AdminLayout><AdminSupportPage /></AdminLayout></ProtectedRoute>} />
 
           {/* 5. Delivery Partner Module Routes */}
           <Route path="/delivery/login" element={<DeliveryLoginPage />} />

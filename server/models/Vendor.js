@@ -32,7 +32,7 @@ const vendorSchema = new mongoose.Schema({
   },
   businessTypes: [{
     type: String,
-    enum: ['Pet Store & Retail', 'Pet Grooming & Spa', 'Veterinary Clinic & Hospital', 'Pet Boarding & Hostel']
+    enum: ['Pet Store & Retail', 'Pet Grooming & Spa', 'Veterinary Clinic & Hospital', 'Pet Boarding & Hostel', 'Pet Boarding & Daycare']
   }],
   status: {
     type: String,

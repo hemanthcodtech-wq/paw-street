@@ -76,11 +76,19 @@ const productSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  tags: [{
+    type: String,
+    enum: ['new', 'top_pick', 'trending']
+  }],
   // Specific for Services
   serviceModes: [{
     type: String,
     enum: ['At-Home Service', 'Clinic / Spa Visit']
   }],
+  visitingFee: {
+    type: Number,
+    default: 0
+  },
   durationMinutes: {
     type: Number,
     default: 45

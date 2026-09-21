@@ -304,7 +304,7 @@ export default function VendorProductsPage() {
       mrp: srv.mrp || srv.price,
       durationMinutes: srv.durationMinutes || 45,
       petType: srv.petType || 'Dogs & Cats',
-      visitingFee: srv.visitingFee || (srv.deliveryMode === 'home_service' ? 99 : 0),
+      visitingFee: srv.visitingFee ?? (srv.deliveryMode === 'home_service' || srv.deliveryMode === 'both' ? 99 : 0),
       image: srv.image || '',
       description: srv.description || '',
       featuresText: (srv.features || []).join('\n')
@@ -672,6 +672,7 @@ export default function VendorProductsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredServices.map(srv => {
                 const isHome = srv.deliveryMode === 'home_service';
+                const isBoth = srv.deliveryMode === 'both';
                 return (
                   <div 
                     key={srv.id}
@@ -682,7 +683,12 @@ export default function VendorProductsPage() {
                     {/* Top Badges */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        {isHome ? (
+                        {isBoth ? (
+                          <span className="bg-emerald-100 text-emerald-900 text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200">
+                            <Home className="w-3 h-3 text-emerald-700" />
+                            <span>Home + In-Clinic Options</span>
+                          </span>
+                        ) : isHome ? (
                           <span className="bg-amber-100 text-amber-900 text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-amber-200">
                             <Home className="w-3 h-3 text-amber-700" />
                             <span>At-Home Doorstep Service</span>
@@ -1031,7 +1037,7 @@ export default function VendorProductsPage() {
                   <label className="block font-bold text-slate-700 mb-1.5">
                     Service Delivery Channel *
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <label 
                       className={`p-3 rounded-2xl border cursor-pointer flex items-center gap-2.5 transition-all ${
                         serviceFormData.deliveryMode === 'home_service'
@@ -1043,7 +1049,7 @@ export default function VendorProductsPage() {
                         type="radio"
                         name="deliveryMode"
                         checked={serviceFormData.deliveryMode === 'home_service'}
-                        onChange={() => setServiceFormData({ ...serviceFormData, deliveryMode: 'home_service', visitingFee: 99 })}
+                        onChange={() => setServiceFormData({ ...serviceFormData, deliveryMode: 'home_service', visitingFee: serviceFormData.visitingFee || 99 })}
                         className="text-amber-500 focus:ring-amber-400"
                       />
                       <div>
@@ -1069,6 +1075,26 @@ export default function VendorProductsPage() {
                       <div>
                         <span className="font-bold text-slate-900 block text-xs">🏥 In-Clinic Visit</span>
                         <span className="text-[10px] text-slate-500">Customer visits center</span>
+                      </div>
+                    </label>
+
+                    <label
+                      className={`p-3 rounded-2xl border cursor-pointer flex items-center gap-2.5 transition-all ${
+                        serviceFormData.deliveryMode === 'both'
+                          ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-300'
+                          : 'border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="deliveryMode"
+                        checked={serviceFormData.deliveryMode === 'both'}
+                        onChange={() => setServiceFormData({ ...serviceFormData, deliveryMode: 'both', visitingFee: serviceFormData.visitingFee || 99 })}
+                        className="text-emerald-500 focus:ring-emerald-400"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-900 block text-xs">🏡 + 🏥 Both Options</span>
+                        <span className="text-[10px] text-slate-500">Customer chooses</span>
                       </div>
                     </label>
                   </div>
@@ -1105,6 +1131,22 @@ export default function VendorProductsPage() {
                   </div>
                 </div>
 
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Supported Pet Type *
+                  </label>
+                  <select
+                    required
+                    value={serviceFormData.petType}
+                    onChange={(e) => setServiceFormData({ ...serviceFormData, petType: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 text-xs focus:outline-none focus:border-amber-400"
+                  >
+                    <option value="Dogs & Cats">Dogs & Cats</option>
+                    <option value="Dog">Dogs only</option>
+                    <option value="Cat">Cats only</option>
+                  </select>
+                </div>
+
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">
@@ -1135,7 +1177,7 @@ export default function VendorProductsPage() {
                     />
                   </div>
 
-                  {serviceFormData.deliveryMode === 'home_service' ? (
+                  {serviceFormData.deliveryMode !== 'clinic_visit' ? (
                     <div>
                       <label className="block font-bold text-slate-700 mb-1">
                         Visiting Fee (₹)

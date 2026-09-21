@@ -6,14 +6,19 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const DeliveryPartner = require('../models/DeliveryPartner');
 const PlatformCMS = require('../models/PlatformCMS');
-const SupportTicket = require('../models/SupportTicket');
 const bcrypt = require('bcryptjs');
 const { uploadToCloudinary } = require('../config/cloudinary');
 const { generateVendorApprovalPDFWithCredentials } = require('../utils/pdfService');
 const { sendVendorWelcomeEmail, sendVendorRejectionEmail } = require('../utils/emailService');
 
+async function getRealVendorFilter() {
+  const adminUsers = await User.find({ role: 'admin' }).select('_id');
+  return { user: { $nin: adminUsers.map(admin => admin._id) } };
+}
+
 // Helper to calculate aggregate metrics from DB
 async function calculateMetrics() {
+  const realVendorFilter = await getRealVendorFilter();
   const [
     vendorsTotal,
     approvedVendors,
@@ -23,21 +28,17 @@ async function calculateMetrics() {
     pendingProducts,
     approvedProducts,
     totalOrders,
-    completedOrders,
-    openTickets,
-    inProgressTickets
+    completedOrders
   ] = await Promise.all([
-    Vendor.countDocuments(),
-    Vendor.countDocuments({ status: 'approved' }),
-    Vendor.countDocuments({ status: 'pending' }),
-    Vendor.countDocuments({ status: 'suspended' }),
+    Vendor.countDocuments(realVendorFilter),
+    Vendor.countDocuments({ ...realVendorFilter, status: 'approved' }),
+    Vendor.countDocuments({ ...realVendorFilter, status: 'pending' }),
+    Vendor.countDocuments({ ...realVendorFilter, status: 'suspended' }),
     Product.countDocuments(),
     Product.countDocuments({ status: 'pending_approval' }),
     Product.countDocuments({ status: 'approved' }),
     Order.countDocuments(),
-    Order.find({ orderStatus: { $in: ['delivered', 'confirmed', 'out_for_delivery'] } }),
-    SupportTicket.countDocuments({ status: 'open' }),
-    SupportTicket.countDocuments({ status: 'in_progress' })
+    Order.find({ status: { $in: ['delivered', 'confirmed', 'out_for_delivery'] } })
   ]);
 
   // Compute GMV from completed orders
@@ -58,8 +59,7 @@ async function calculateMetrics() {
     suspendedVendors,
     totalProducts,
     pendingProducts,
-    approvedProducts,
-    openTickets: openTickets + inProgressTickets
+    approvedProducts
   };
 }
 
@@ -106,6 +106,32 @@ async function buildFinanceLedger() {
 
   orders.forEach(order => {
     const vendorIds = getOrderVendorIds(order);
+    if (vendorIds.length === 0) {
+      const grossAmount = Number(order.pricing?.subtotal || order.pricing?.total || 0);
+      paymentHistory.push({
+        orderId: order.orderId,
+        orderMongoId: order._id,
+        vendorId: 'VND-DIRECT',
+        vendorName: 'PAW NEAR Direct',
+        customerName: order.customerName || order.user?.name || 'Customer',
+        customerPhone: order.customerPhone || order.user?.phone || '',
+        paymentMethod: order.payment?.method || '',
+        paymentStatus: order.payment?.status || '',
+        razorpayPaymentId: order.payment?.razorpayPaymentId || '',
+        grossAmount,
+        commissionRate: 0,
+        platformCommission: 0,
+        vendorNetAmount: grossAmount,
+        settlementStatus: 'processed',
+        payoutReference: '',
+        paidAt: order.createdAt,
+        createdAt: order.createdAt,
+        appointment: order.appointment || null,
+        status: order.status
+      });
+      return;
+    }
+
     vendorIds.forEach(vendorId => {
       const vendor = vendorMap.get(vendorId);
       if (!vendor) return;
@@ -137,8 +163,8 @@ async function buildFinanceLedger() {
       ledger.ordersCount += 1;
       ledger.grossAmount += grossAmount;
       ledger.platformCommission += platformCommission;
+      ledger.amount += vendorNetAmount;
       if (settlementStatus !== 'processed') {
-        ledger.amount += vendorNetAmount;
         ledger.status = 'pending';
       }
 
@@ -297,7 +323,7 @@ router.post('/payouts/:vendorId/process', async (req, res) => {
 // ==========================================
 router.get('/vendors', async (req, res) => {
   try {
-    const vendors = await Vendor.find().sort({ createdAt: -1 });
+    const vendors = await Vendor.find(await getRealVendorFilter()).sort({ createdAt: -1 });
     
     // Normalize format to match frontend expectation
     const formattedVendors = vendors.map(v => ({
@@ -521,6 +547,7 @@ router.get('/products', async (req, res) => {
       status: p.status || 'approved',
       submittedDate: p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recently',
       type: p.type || 'product',
+      tags: Array.isArray(p.tags) ? p.tags : [],
       notes: p.description || '',
       rejectionReason: p.rejectionReason || ''
     }));
@@ -572,6 +599,28 @@ router.put('/products/:id/reject', async (req, res) => {
   }
 });
 
+router.put('/products/:id/tags', async (req, res) => {
+  try {
+    const allowedTags = ['new', 'top_pick', 'trending'];
+    const tags = Array.isArray(req.body.tags)
+      ? [...new Set(req.body.tags.filter(tag => allowedTags.includes(tag)))]
+      : [];
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      { tags },
+      { new: true, runValidators: true }
+    );
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    res.json({ success: true, message: 'Product tags updated.', product });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // ==========================================
 // 4. PLATFORM CMS & DYNAMIC CONTENT (Section 3.3)
 // ==========================================
@@ -604,7 +653,7 @@ router.get('/cms', async (req, res) => {
             title: 'Professional Pet Grooming & Spa at Home',
             subTitle: 'Certified groomers bring bathing, styling, and hygiene care right to your home.',
             tag: '✂️ HOME VISIT',
-            image: '/images/promo_banner_main.jpg',
+            image: '/images/cat_grooming.jpg',
             link: '/services',
             ctaText: 'Book Grooming',
             bgColor: 'from-teal-600 via-emerald-600 to-teal-800',
@@ -615,7 +664,7 @@ router.get('/cms', async (req, res) => {
             title: '24/7 Verified Veterinary Doctors Near You',
             subTitle: 'Consult certified doctors at clinic or request immediate home check-ups.',
             tag: '🩺 24/7 VET CARE',
-            image: '/images/store_vet.jpg',
+            image: '/images/cat_clinic.jpg',
             link: '/services',
             ctaText: 'Find Nearest Clinic',
             bgColor: 'from-blue-600 via-indigo-600 to-purple-700',
@@ -770,104 +819,7 @@ router.put('/business-settings', async (req, res) => {
 });
 
 // ==========================================
-// 6. SUPPORT QUEUE & OPERATIONS (Section 3.4)
-// ==========================================
-router.get('/support', async (req, res) => {
-  try {
-    const tickets = await SupportTicket.find().sort({ createdAt: -1 });
-
-    const formattedTickets = tickets.map(t => ({
-      id: t.ticketId || t._id.toString(),
-      _id: t._id,
-      customerName: t.customerName,
-      customerPhone: t.customerPhone || '+91 98765 43210',
-      type: t.category?.includes('Vendor') ? 'Vendor Query' : 'Customer Issue',
-      category: t.category,
-      orderId: t.orderId || 'ORD-99042',
-      priority: (t.priority || 'medium').toLowerCase(),
-      status: t.status || 'open',
-      assignedTo: t.assignedStaff?.id || null,
-      assignedName: t.assignedStaff?.name || 'Unassigned',
-      createdAt: t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'Recently',
-      description: t.subject || (t.messages && t.messages[0]?.text) || 'Support inquiry submitted.',
-      notes: t.messages?.map(m => `${m.sender}: ${m.text}`) || []
-    }));
-
-    res.json({
-      success: true,
-      count: formattedTickets.length,
-      tickets: formattedTickets
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-router.put('/support/ticket/:id', async (req, res) => {
-  try {
-    const { status, assignedStaff, message, resolution } = req.body;
-    
-    const update = {};
-    if (status) update.status = status;
-    if (assignedStaff) update.assignedStaff = assignedStaff;
-    
-    const ticket = await SupportTicket.findOne({
-      $or: [{ _id: req.params.id }, { ticketId: req.params.id }]
-    });
-
-    if (!ticket) {
-      return res.status(404).json({ success: false, message: 'Ticket not found' });
-    }
-
-    if (status) ticket.status = status;
-    if (assignedStaff) ticket.assignedStaff = assignedStaff;
-    if (message) {
-      ticket.messages.push({
-        sender: 'Support Lead',
-        text: message,
-        timestamp: new Date()
-      });
-    }
-    if (resolution) {
-      ticket.messages.push({
-        sender: 'Resolution',
-        text: resolution,
-        timestamp: new Date()
-      });
-    }
-
-    await ticket.save();
-    res.json({ success: true, message: 'Support ticket updated!', ticket });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-router.post('/support/ticket', async (req, res) => {
-  try {
-    const { subject, customerName, customerPhone, category, priority, orderId, message } = req.body;
-    const ticketId = `TCK-${Math.floor(1000 + Math.random() * 9000)}`;
-
-    const ticket = await SupportTicket.create({
-      ticketId,
-      subject: subject || 'Support Request',
-      customerName: customerName || 'Customer',
-      customerPhone: customerPhone || '',
-      category: category || 'General Inquiry',
-      priority: priority || 'Medium',
-      orderId: orderId || '',
-      status: 'open',
-      messages: message ? [{ sender: 'Customer', text: message, timestamp: new Date() }] : []
-    });
-
-    res.status(201).json({ success: true, message: 'Ticket logged successfully', ticket });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// ==========================================
-// 7. ADMIN ORDERS & REVENUE LEDGER
+// 6. ADMIN ORDERS & REVENUE LEDGER
 // ==========================================
 router.get('/orders', async (req, res) => {
   try {

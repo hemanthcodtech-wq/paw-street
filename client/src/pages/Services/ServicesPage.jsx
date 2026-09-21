@@ -27,21 +27,35 @@ function serviceToSalonItem(product) {
   const vendorLocation = product.vendor?.location || {};
   const vendorPhotos = product.vendor?.photos || {};
   const vendorModes = product.vendor?.serviceDeliveryModes || {};
-  const mode = product.serviceModes || [];
+  const mode = product.serviceModes?.length
+    ? product.serviceModes
+    : product.deliveryMode === 'both'
+      ? ['At-Home Service', 'Clinic / Spa Visit']
+      : product.deliveryMode === 'home_service'
+        ? ['At-Home Service']
+        : ['Clinic / Spa Visit'];
+  const homeServiceEnabled = mode.includes('At-Home Service');
+  const clinicVisitEnabled = mode.includes('Clinic / Spa Visit');
+  const category = String(product.category || '').toLowerCase();
+  const serviceType = category.includes('veterinary') || category.includes('clinic')
+    ? 'clinic'
+    : category.includes('boarding') || category.includes('daycare')
+      ? 'boarding'
+      : 'grooming';
   return {
     id: vendorId || product.vendorName || 'pawnear-services',
     vendorId: vendorId ? vendorId.toString() : '',
     name: vendorStoreName,
-    type: (product.category || '').toLowerCase().includes('veterinary') ? 'clinic' : 'grooming',
+    type: serviceType,
     tagline: product.description || 'Certified pet care service near you',
     address: [vendorLocation.address, vendorLocation.city].filter(Boolean).join(', ') || 'Hyderabad',
     rating: product.vendor?.rating || product.rating || 4.8,
     reviewsCount: product.reviewsCount || 0,
     distance: 'Nearby',
     image: product.primaryImage || product.image || vendorPhotos.storeFront || '/images/cat_grooming.jpg',
-    homeServiceEnabled: vendorModes.homeServiceEnabled !== false && (mode.includes('At-Home Service') || product.deliveryMode === 'home_service'),
-    clinicVisitEnabled: vendorModes.clinicVisitEnabled !== false && (mode.includes('Clinic / Spa Visit') || product.deliveryMode === 'clinic_visit'),
-    homeVisitingFee: vendorModes.homeServiceFee ?? 99,
+    homeServiceEnabled,
+    clinicVisitEnabled,
+    homeVisitingFee: product.visitingFee ?? vendorModes.homeServiceFee ?? 0,
     services: [{
       id: product._id || product.id,
       _id: product._id || product.id,
@@ -51,27 +65,14 @@ function serviceToSalonItem(product) {
       desc: product.description || '',
       price: product.price || 0,
       originalPrice: product.mrp || product.price,
-      image: product.primaryImage || product.image || '/images/cat_grooming.jpg'
+      image: product.primaryImage || product.image || '/images/cat_grooming.jpg',
+      petType: product.petType || 'Dogs & Cats',
+      serviceModes: mode,
+      deliveryMode: product.deliveryMode,
+      visitingFee: product.visitingFee ?? vendorModes.homeServiceFee ?? 0,
+      serviceType
     }]
   };
-}
-
-function groupServicesByVendor(products) {
-  const grouped = new Map();
-  products.forEach(product => {
-    const salon = serviceToSalonItem(product);
-    const key = salon.vendorId || salon.name;
-    if (!grouped.has(key)) {
-      grouped.set(key, salon);
-    } else {
-      const existing = grouped.get(key);
-      existing.services.push(...salon.services);
-      existing.homeServiceEnabled = existing.homeServiceEnabled || salon.homeServiceEnabled;
-      existing.clinicVisitEnabled = existing.clinicVisitEnabled || salon.clinicVisitEnabled;
-      if (salon.type === 'clinic') existing.type = 'clinic';
-    }
-  });
-  return Array.from(grouped.values());
 }
 
 export default function ServicesPage() {
@@ -99,7 +100,7 @@ export default function ServicesPage() {
       try {
         const res = await api.getProducts('type=service');
         if (!ignore && res?.success && Array.isArray(res.products)) {
-          setSalons(groupServicesByVendor(res.products));
+          setSalons(res.products.map(serviceToSalonItem));
         }
       } catch (err) {
         if (!ignore) setSalons(SALONS);
@@ -116,9 +117,13 @@ export default function ServicesPage() {
   const filteredSalons = salons.filter(salon => {
     // 1. Main Category filter
     let matchesCategory = false;
-    if (activeCategoryTab === 'grooming') matchesCategory = salon.type === 'grooming';
-    else if (activeCategoryTab === 'clinic') matchesCategory = salon.type === 'clinic';
-    else if (activeCategoryTab === 'boarding') matchesCategory = salon.type === 'boarding';
+    if (activeCategoryTab === 'grooming') {
+      matchesCategory = salon.services.some(service => service.serviceType === 'grooming');
+    } else if (activeCategoryTab === 'clinic') {
+      matchesCategory = salon.services.some(service => service.serviceType === 'clinic');
+    } else if (activeCategoryTab === 'boarding') {
+      matchesCategory = salon.services.some(service => service.serviceType === 'boarding');
+    }
 
     // 2. Channel mode filter (Home Service vs Clinic Visit)
     let matchesChannel = true;

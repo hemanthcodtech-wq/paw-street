@@ -3,6 +3,7 @@ import { Star, MapPin, Sparkles, ChevronRight, Home, Building, Calendar, ArrowRi
 
 export default function SalonCard({ salon, onBook }) {
   const minPrice = Math.min(...(salon.services || []).map(s => s.price));
+  const service = salon.services?.[0];
 
   return (
     <div
@@ -23,7 +24,7 @@ export default function SalonCard({ salon, onBook }) {
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-heading font-black text-slate-900 text-sm sm:text-base group-hover:text-amber-600 transition-colors truncate">
-              {salon.name}
+              {service?.name || salon.name}
             </h3>
             {salon.type === 'clinic' && (
               <span className="bg-blue-50 text-blue-800 text-[10px] font-black px-2 py-0.5 rounded-full border border-blue-200/60">
@@ -37,7 +38,9 @@ export default function SalonCard({ salon, onBook }) {
             )}
           </div>
 
-          <p className="text-xs text-slate-500 line-clamp-1">{salon.tagline || salon.address}</p>
+          <p className="text-xs text-slate-500 line-clamp-1">
+            {salon.name}{salon.tagline ? ` • ${salon.tagline}` : ''}
+          </p>
 
           {/* Rating and Distance */}
           <div className="flex items-center gap-3 text-xs text-slate-600 pt-0.5">
@@ -58,7 +61,7 @@ export default function SalonCard({ salon, onBook }) {
             {salon.homeServiceEnabled && (
               <span className="bg-amber-100/80 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 border border-amber-200">
                 <Home className="w-2.5 h-2.5 text-amber-700" />
-                <span>🏡 Doorstep Home Visit (+₹{salon.homeVisitingFee || 99})</span>
+                <span>🏡 Doorstep Home Visit (+₹{salon.homeVisitingFee ?? 0})</span>
               </span>
             )}
             {salon.clinicVisitEnabled && (

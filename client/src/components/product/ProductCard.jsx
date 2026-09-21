@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Star, Heart, Plus, Minus, ShoppingBag, Zap, ShieldCheck } from 'lucide-react';
+import { Star, Heart, Plus, Minus, ShoppingBag, Zap, ShieldCheck, Calendar } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import BookingModal from '../service/BookingModal';
 
 export default function ProductCard({ product, layout = 'grid' }) {
   const navigate = useNavigate();
   const { items, addToCart, updateQuantity, toggleWishlist, isWishlisted } = useCart();
+  const [bookingSalon, setBookingSalon] = useState(null);
 
   const wishlisted = isWishlisted(product.id);
+  const isServiceCard = Boolean(product?.isService || product?.type === 'service');
   
   // Check if item is already in cart
   const cartItem = items.find(item => item.id === product.id);
@@ -16,6 +19,110 @@ export default function ProductCard({ product, layout = 'grid' }) {
   const defaultSize = product.selectedSize || (product.sizes && product.sizes[0]?.size) || 'Standard';
   const displayPrice = product.sizes ? (product.sizes.find(s => s.isDefault)?.price || product.price) : product.price;
   const displayMrp = product.sizes ? (product.sizes.find(s => s.isDefault)?.mrp || product.mrp) : product.mrp;
+
+  const serviceSalon = isServiceCard ? {
+    id: product.vendorId || product.storeId || product.id,
+    vendorId: product.vendorId || product.vendor || product.storeId || '',
+    name: product.storeName || product.brand || 'PAW NEAR Service Partner',
+    type: (product.category || '').toLowerCase().includes('clinic') || (product.category || '').toLowerCase().includes('vet') ? 'clinic' : 'grooming',
+    tagline: product.description || 'Certified pet care service near you',
+    address: product.storeAddress || 'Hyderabad',
+    rating: product.rating || 4.8,
+    reviewsCount: product.reviewsCount || 0,
+    distance: product.storeDistance || 'Nearby',
+    image: product.image,
+    homeServiceEnabled: true,
+    clinicVisitEnabled: true,
+    homeVisitingFee: product.visitingFee || 99,
+    services: [{
+      id: product.id,
+      _id: product._id || product.id,
+      vendorId: product.vendorId || product.vendor || product.storeId || '',
+      vendorName: product.storeName || product.brand || 'PAW NEAR Service Partner',
+      name: product.name,
+      desc: product.description || '',
+      price: product.price || 0,
+      originalPrice: product.mrp || product.price || 0,
+      image: product.image || '/images/cat_grooming.jpg'
+    }]
+  } : null;
+
+  if (isServiceCard && layout !== 'deal') {
+    const isHorizontalService = layout === 'horizontal' || layout === 'list';
+    return (
+      <>
+        <div className={`group bg-white rounded-2xl border border-slate-200/80 hover:border-amber-300 hover:shadow-md transition-all duration-300 overflow-hidden relative ${
+          isHorizontalService
+            ? layout === 'list' ? 'w-full min-h-[152px] flex flex-row p-3' : 'w-[290px] sm:w-[320px] shrink-0 min-h-[152px] flex flex-row p-3'
+            : 'p-3.5 sm:p-4'
+        }`}>
+          <div className={`relative bg-white overflow-hidden flex items-center justify-center p-2 shrink-0 ${
+            isHorizontalService ? 'w-24 sm:w-28 self-stretch rounded-xl border border-slate-100 bg-slate-50/80' : 'aspect-square w-full'
+          }`}>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleWishlist(product.id);
+              }}
+              className="absolute top-1 right-1 z-10 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white shadow-xs border border-slate-100 flex items-center justify-center text-slate-400 hover:text-rose-500 transition-all active:scale-90"
+              title={wishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
+            >
+              <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors ${wishlisted ? 'text-rose-500 fill-rose-500' : ''}`} />
+            </button>
+
+            <img
+              src={product.image}
+              alt={product.name}
+              loading="lazy"
+              className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-300"
+            />
+          </div>
+
+          <div className={`flex-1 flex flex-col justify-between min-w-0 ${isHorizontalService ? 'pl-3' : 'pt-2.5'}`}>
+            <div>
+              <div className="flex items-center justify-between gap-1 text-[9px] sm:text-[11px] text-slate-400 mb-1">
+                <span className="font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  {serviceSalon?.type === 'clinic' ? 'Vet Care' : 'Grooming'}
+                </span>
+                <span className="font-medium shrink-0">{product.storeDistance || 'Nearby'}</span>
+              </div>
+
+              <h4 className="font-heading font-black text-slate-900 text-xs sm:text-[13px] line-clamp-2 hover:text-amber-600 transition-colors leading-snug">
+                {product.shortName || product.name}
+              </h4>
+            </div>
+
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <span className="text-sm sm:text-base font-black text-slate-900">₹{displayPrice || product.price}</span>
+              <div className="flex items-center gap-1 text-xs font-bold text-slate-800">
+                <span>{product.rating || 4.8}</span>
+                <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+              </div>
+            </div>
+
+            <div className="mt-2.5 flex items-center gap-2">
+              <button
+                onClick={() => setBookingSalon(serviceSalon)}
+                className="flex-1 min-w-0 py-2 bg-[#E5A015] hover:bg-[#D49010] text-slate-950 font-black text-[11px] rounded-xl transition-all duration-200 flex items-center justify-center gap-1 active:scale-95 shadow-xs"
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Book Appointment</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {bookingSalon && (
+          <BookingModal
+            salon={bookingSalon}
+            isOpen={!!bookingSalon}
+            onClose={() => setBookingSalon(null)}
+          />
+        )}
+      </>
+    );
+  }
 
   if (layout === 'deal') {
     const discount = displayMrp > displayPrice ? Math.round(((displayMrp - displayPrice) / displayMrp) * 100) : 0;

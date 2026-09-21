@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
 import { 
   X, 
   Clock, 
@@ -20,16 +19,46 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useVendor } from '../../context/VendorContext';
 import { useOrders } from '../../context/OrderContext';
+import { api } from '../../services/api';
+import { loadRazorpayScript } from '../../utils/razorpay';
+
+function petMatchesService(pet, supportedPetType) {
+  const supported = String(supportedPetType || 'Dogs & Cats').toLowerCase();
+  if (supported.includes('dog') && supported.includes('cat')) return true;
+
+  const petType = String(pet?.type || pet?.species || pet?.animalType || pet?.breed || '').toLowerCase();
+  if (supported.includes('dog')) return petType.includes('dog');
+  if (supported.includes('cat')) return petType.includes('cat');
+  return true;
+}
 
 export default function BookingModal({ salon, isOpen, onClose }) {
   const { user, pets, setIsAuthModalOpen } = useAuth();
   const { addOrder, fetchVendorData } = useVendor();
   const { placeOrder } = useOrders();
-  
+
+  const initialDates = Array.from({ length: 4 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() + index);
+
+    const weekday = date.toLocaleDateString('en-US', { weekday: 'short' });
+    const dayMonth = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+    return {
+      label: index === 0 ? 'Today' : index === 1 ? 'Tomorrow' : weekday,
+      date: dayMonth,
+      fullLabel: `${index === 0 ? 'Today' : index === 1 ? 'Tomorrow' : weekday}, ${dayMonth}`
+    };
+  });
+
+  const firstService = salon?.services?.[0];
+  const firstServiceModes = firstService?.serviceModes || [];
+  const initialServiceType = firstServiceModes.includes('At-Home Service') ? 'home' : 'clinic';
+
   const [selectedPet, setSelectedPet] = useState(pets[0]?.id || 'pet-1');
   const [selectedService, setSelectedService] = useState(salon?.services[0]?.id || null);
-  const [serviceType, setServiceType] = useState('home'); // 'home' | 'clinic'
-  const [selectedDate, setSelectedDate] = useState('Today, 5 Sep');
+  const [serviceType, setServiceType] = useState(initialServiceType); // 'home' | 'clinic'
+  const [selectedDate, setSelectedDate] = useState(initialDates[0].fullLabel);
   const [selectedSlot, setSelectedSlot] = useState('03:00 PM');
   const [homeAddress, setHomeAddress] = useState('Villa 14, Rainbow Meadows, Jubilee Hills');
   const [selectedAddons, setSelectedAddons] = useState([]);
@@ -38,25 +67,11 @@ export default function BookingModal({ salon, isOpen, onClose }) {
   
   const [bookingComplete, setBookingComplete] = useState(false);
   const [createdBooking, setCreatedBooking] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   if (!isOpen || !salon) return null;
 
-  const dates = [
-    { label: 'Today', date: '5 Sep' },
-    { label: 'Tomorrow', date: '6 Sep' },
-    { label: 'Sunday', date: '7 Sep' },
-    { label: 'Monday', date: '8 Sep' }
-  ];
-
-  const slots = [
-    '09:30 AM', '11:00 AM', '01:30 PM', '03:00 PM', '04:30 PM', '06:00 PM'
-  ];
-
-  const addOnOptions = [
-    { id: 'add-1', name: 'Anti-Tick & Flea Herbal Soak', price: 299 },
-    { id: 'add-2', name: 'Nail Clipping & Paw Pad Balm', price: 199 },
-    { id: 'add-3', name: 'Dental Mouth Wash & Tartar Gel', price: 249 }
-  ];
+  const dates = initialDates;
 
   const activeServiceObj = salon.services?.find(s => s.id === selectedService) || salon.services?.[0] || {
     id: 's-def',
@@ -64,13 +79,59 @@ export default function BookingModal({ salon, isOpen, onClose }) {
     price: 899
   };
 
+  const activeServiceModes = activeServiceObj.serviceModes || (
+    activeServiceObj.deliveryMode === 'both'
+      ? ['At-Home Service', 'Clinic / Spa Visit']
+      : activeServiceObj.deliveryMode === 'home_service'
+        ? ['At-Home Service']
+        : ['Clinic / Spa Visit']
+  );
+  const homeServiceAvailable = activeServiceModes.includes('At-Home Service');
+  const clinicVisitAvailable = activeServiceModes.includes('Clinic / Spa Visit');
+  const supportedPetType = activeServiceObj.petType || 'Dogs & Cats';
+
+  useEffect(() => {
+    if (serviceType === 'home' && !homeServiceAvailable) setServiceType('clinic');
+    if (serviceType === 'clinic' && !clinicVisitAvailable) setServiceType('home');
+  }, [selectedService, serviceType, homeServiceAvailable, clinicVisitAvailable]);
+
+  const rawAddOns = activeServiceObj?.addons || activeServiceObj?.addOns || activeServiceObj?.optionalAddons || [];
+  const addOnOptions = Array.isArray(rawAddOns)
+    ? rawAddOns
+        .map((addon, idx) => {
+          const normalized = typeof addon === 'string'
+            ? { id: `addon-${idx}`, name: addon, price: 0 }
+            : addon;
+
+          const price = Number(normalized.price ?? normalized.cost ?? normalized.amount ?? 0);
+          if (!normalized.name && !normalized.title) return null;
+
+          return {
+            id: normalized.id || `addon-${idx}`,
+            name: normalized.name || normalized.title || 'Service Add-on',
+            price
+          };
+        })
+        .filter(Boolean)
+        .filter(addon => addon.price > 0 || addon.name)
+    : [];
+
+  const showAddons = addOnOptions.length > 0;
+
+  const slots = [
+    '09:30 AM', '11:00 AM', '01:30 PM', '03:00 PM', '04:30 PM', '06:00 PM'
+  ];
+
   const activePetObj = pets.find(p => p.id === selectedPet) || {
     id: 'pet-1',
     name: 'Bruno',
     breed: 'Golden Retriever (2 yrs)'
   };
+  const selectedPetAllowed = petMatchesService(activePetObj, supportedPetType);
 
-  const visitingFee = serviceType === 'home' ? (salon.homeVisitingFee || 99) : 0;
+  const visitingFee = serviceType === 'home'
+    ? Number(activeServiceObj.visitingFee ?? salon.homeVisitingFee ?? 0)
+    : 0;
   const addonsTotal = selectedAddons.reduce((sum, a) => sum + a.price, 0);
   const finalTotal = (activeServiceObj?.price || 0) + visitingFee + addonsTotal;
 
@@ -82,6 +143,50 @@ export default function BookingModal({ salon, isOpen, onClose }) {
     }
   };
 
+  const collectOnlinePayment = async () => {
+    const isLoaded = await loadRazorpayScript();
+    if (!isLoaded || !window.Razorpay) {
+      throw new Error('Razorpay could not be loaded. Please try again.');
+    }
+
+    const razorpayRes = await api.createRazorpayOrder(finalTotal, `appointment_${Date.now()}`);
+    if (!razorpayRes?.order) {
+      throw new Error('Unable to create the Razorpay payment order.');
+    }
+
+    return new Promise((resolve, reject) => {
+      const options = {
+        key: razorpayRes.keyId || razorpayRes.key,
+        amount: razorpayRes.order.amount,
+        currency: 'INR',
+        name: 'PAW NEAR Pet Care',
+        description: `Appointment: ${activeServiceObj.name}`,
+        order_id: razorpayRes.order.id,
+        handler: resolve,
+        prefill: {
+          name: user?.name || 'Pet Parent',
+          email: user?.email || 'customer@pawnear.com',
+          contact: user?.phone || '+919876543210'
+        },
+        notes: {
+          service: activeServiceObj.name,
+          petType: supportedPetType,
+          appointmentMode: serviceType
+        },
+        theme: { color: '#F59E0B' },
+        modal: {
+          ondismiss: () => reject(new Error('Payment was cancelled.'))
+        }
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.on('payment.failed', (response) => {
+        reject(new Error(response.error?.description || 'Payment failed.'));
+      });
+      razorpay.open();
+    });
+  };
+
   const handleConfirm = async (e) => {
     e.preventDefault();
 
@@ -90,10 +195,35 @@ export default function BookingModal({ salon, isOpen, onClose }) {
       return;
     }
 
+    if (!selectedPetAllowed) {
+      return;
+    }
+
+    setIsProcessing(true);
+
     const isClinicVisit = serviceType === 'clinic';
     const vendorId = salon.vendorId || salon.vendor || activeServiceObj.vendorId || activeServiceObj.vendor || '';
     const serviceId = activeServiceObj._id || activeServiceObj.id;
     
+    let paymentResponse = null;
+    try {
+      if (paymentMethod !== 'cod') {
+        paymentResponse = await collectOnlinePayment();
+        const verification = await api.verifyRazorpayPayment({
+          razorpayOrderId: paymentResponse.razorpay_order_id,
+          razorpayPaymentId: paymentResponse.razorpay_payment_id,
+          razorpaySignature: paymentResponse.razorpay_signature
+        });
+        if (!verification?.success) {
+          throw new Error('Razorpay payment verification failed.');
+        }
+      }
+    } catch (paymentError) {
+      setIsProcessing(false);
+      window.alert(paymentError.message || 'Payment was not completed.');
+      return;
+    }
+
     const bookingPayload = {
       id: `BKG-${Math.floor(100000 + Math.random() * 900000)}`,
       orderType: serviceType === 'home' ? 'home_service' : 'clinic_visit',
@@ -136,7 +266,10 @@ export default function BookingModal({ salon, isOpen, onClose }) {
       ],
       totalAmount: finalTotal,
       paymentMethod: paymentMethod === 'upi' ? 'Prepaid (UPI - GPay)' : paymentMethod === 'card' ? 'Prepaid (Credit Card)' : 'Pay on Arrival / Clinic Counter',
-      paymentStatus: paymentMethod === 'cod' ? 'Pay on Arrival' : 'Paid',
+      paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid',
+      razorpayOrderId: paymentResponse?.razorpay_order_id || '',
+      razorpayPaymentId: paymentResponse?.razorpay_payment_id || '',
+      razorpaySignature: paymentResponse?.razorpay_signature || '',
       orderStatus: 'new',
       assignedDeliveryBoyId: null,
       placedAt: new Date().toISOString(),
@@ -154,6 +287,10 @@ export default function BookingModal({ salon, isOpen, onClose }) {
         },
         deliverySpeed: bookingPayload.scheduledSlot,
         paymentMethod: paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online (Razorpay / UPI / Cards)',
+        paymentStatus: bookingPayload.paymentStatus,
+        razorpayOrderId: bookingPayload.razorpayOrderId,
+        razorpayPaymentId: bookingPayload.razorpayPaymentId,
+        razorpaySignature: bookingPayload.razorpaySignature,
         customerEmail: user?.email || '',
         customerPhone: user?.phone || bookingPayload.customerPhone,
         items: bookingPayload.items,
@@ -173,6 +310,14 @@ export default function BookingModal({ salon, isOpen, onClose }) {
       });
       bookingPayload.id = saved?.id || bookingPayload.id;
       bookingPayload._id = saved?._id;
+      if (paymentResponse && (saved?._id || saved?.id)) {
+        await api.verifyRazorpayPayment({
+          razorpayOrderId: paymentResponse.razorpay_order_id,
+          razorpayPaymentId: paymentResponse.razorpay_payment_id,
+          razorpaySignature: paymentResponse.razorpay_signature,
+          localOrderId: saved._id || saved.id
+        });
+      }
     } catch (err) {
       console.warn('Appointment booking saved locally only:', err);
     }
@@ -185,6 +330,7 @@ export default function BookingModal({ salon, isOpen, onClose }) {
     }
     setCreatedBooking(bookingPayload);
     setBookingComplete(true);
+    setIsProcessing(false);
   };
 
   return createPortal(
@@ -274,14 +420,6 @@ export default function BookingModal({ salon, isOpen, onClose }) {
 
               {/* Action Buttons */}
               <div className="space-y-2 pt-2">
-                <Link
-                  to="/vendor/orders"
-                  onClick={onClose}
-                  className="w-full py-3 bg-[#E5A015] hover:bg-[#D49010] text-slate-950 font-black text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
-                >
-                  <span>View in Vendor Orders & Dispatch</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
                 <button
                   onClick={() => {
                     setBookingComplete(false);
@@ -304,11 +442,14 @@ export default function BookingModal({ salon, isOpen, onClose }) {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {pets.map((pet) => {
                     const isSelected = selectedPet === pet.id;
+                    const isAllowed = petMatchesService(pet, supportedPetType);
                     return (
                       <div
                         key={pet.id}
-                        onClick={() => setSelectedPet(pet.id)}
-                        className={`p-2.5 rounded-2xl border cursor-pointer transition-all flex items-center gap-2 ${
+                        onClick={() => isAllowed && setSelectedPet(pet.id)}
+                        className={`p-2.5 rounded-2xl border transition-all flex items-center gap-2 ${
+                          isAllowed ? 'cursor-pointer' : 'cursor-not-allowed opacity-45 bg-slate-50' 
+                        } ${
                           isSelected
                             ? 'border-[#E5A015] bg-amber-50/70 shadow-xs ring-2 ring-[#E5A015]'
                             : 'border-slate-200 hover:border-slate-300 bg-white'
@@ -327,6 +468,14 @@ export default function BookingModal({ salon, isOpen, onClose }) {
                     );
                   })}
                 </div>
+                <p className="text-[10px] text-slate-500 mt-2">
+                  This service is available for: <span className="font-bold text-slate-700">{supportedPetType}</span>
+                </p>
+                {!selectedPetAllowed && (
+                  <p className="text-[10px] font-bold text-red-600 mt-1">
+                    Select a compatible pet to continue.
+                  </p>
+                )}
               </div>
 
               {/* Step 2: Choose Service Location Mode (Home Service vs In-Clinic Visit) */}
@@ -337,8 +486,11 @@ export default function BookingModal({ salon, isOpen, onClose }) {
                 <div className="grid grid-cols-2 gap-2.5">
                   <button
                     type="button"
-                    onClick={() => setServiceType('home')}
+                    disabled={!homeServiceAvailable}
+                    onClick={() => homeServiceAvailable && setServiceType('home')}
                     className={`p-3 rounded-2xl border text-left transition-all flex items-start gap-2.5 ${
+                      !homeServiceAvailable ? 'opacity-45 cursor-not-allowed bg-slate-50' : 'cursor-pointer'
+                    } ${
                       serviceType === 'home'
                         ? 'border-[#E5A015] bg-[#E5A015] text-slate-950 shadow-sm ring-2 ring-amber-300'
                         : 'border-slate-200 bg-slate-50/80 hover:bg-slate-100 text-slate-700'
@@ -348,15 +500,18 @@ export default function BookingModal({ salon, isOpen, onClose }) {
                     <div>
                       <div className="text-xs font-black">🏡 At-Home Doorstep</div>
                       <div className={`text-[10px] leading-tight mt-0.5 ${serviceType === 'home' ? 'text-slate-950 font-bold' : 'text-slate-500'}`}>
-                        Mobile Van / Doctor visits your doorstep (+₹{salon.homeVisitingFee || 99})
+                        {homeServiceAvailable ? `Mobile Van / Doctor visits your doorstep (+₹${Number(activeServiceObj.visitingFee ?? salon.homeVisitingFee ?? 0)})` : 'Not available for this service'}
                       </div>
                     </div>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setServiceType('clinic')}
+                    disabled={!clinicVisitAvailable}
+                    onClick={() => clinicVisitAvailable && setServiceType('clinic')}
                     className={`p-3 rounded-2xl border text-left transition-all flex items-start gap-2.5 ${
+                      !clinicVisitAvailable ? 'opacity-45 cursor-not-allowed bg-slate-50' : 'cursor-pointer'
+                    } ${
                       serviceType === 'clinic'
                         ? 'border-blue-500 bg-blue-500 text-white shadow-sm ring-2 ring-blue-300'
                         : 'border-slate-200 bg-slate-50/80 hover:bg-slate-100 text-slate-700'
@@ -366,7 +521,7 @@ export default function BookingModal({ salon, isOpen, onClose }) {
                     <div>
                       <div className="text-xs font-black">🏥 In-Clinic Visit</div>
                       <div className={`text-[10px] leading-tight mt-0.5 ${serviceType === 'clinic' ? 'text-blue-100 font-medium' : 'text-slate-500'}`}>
-                        Visit salon / hospital room (₹0 Visiting fee)
+                        {clinicVisitAvailable ? 'Visit salon / hospital room (₹0 Visiting fee)' : 'Not available for this service'}
                       </div>
                     </div>
                   </button>
@@ -426,38 +581,40 @@ export default function BookingModal({ salon, isOpen, onClose }) {
               </div>
 
               {/* Step 4: Add-Ons */}
-              <div>
-                <label className="block text-[11px] font-black text-slate-800 uppercase tracking-wider mb-2">
-                  4. Optional Add-ons
-                </label>
-                <div className="space-y-1.5">
-                  {addOnOptions.map((addon) => {
-                    const isChecked = selectedAddons.some(a => a.id === addon.id);
-                    return (
-                      <div
-                        key={addon.id}
-                        onClick={() => toggleAddon(addon)}
-                        className={`p-2.5 rounded-xl border cursor-pointer flex items-center justify-between transition-all ${
-                          isChecked
-                            ? 'border-amber-400 bg-amber-50/60'
-                            : 'border-slate-200 bg-white hover:bg-slate-50'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => {}}
-                            className="rounded text-amber-500 pointer-events-none"
-                          />
-                          <span className="text-xs font-bold text-slate-800">{addon.name}</span>
+              {showAddons && (
+                <div>
+                  <label className="block text-[11px] font-black text-slate-800 uppercase tracking-wider mb-2">
+                    4. Optional Add-ons
+                  </label>
+                  <div className="space-y-1.5">
+                    {addOnOptions.map((addon) => {
+                      const isChecked = selectedAddons.some(a => a.id === addon.id);
+                      return (
+                        <div
+                          key={addon.id}
+                          onClick={() => toggleAddon(addon)}
+                          className={`p-2.5 rounded-xl border cursor-pointer flex items-center justify-between transition-all ${
+                            isChecked
+                              ? 'border-amber-400 bg-amber-50/60'
+                              : 'border-slate-200 bg-white hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {}}
+                              className="rounded text-amber-500 pointer-events-none"
+                            />
+                            <span className="text-xs font-bold text-slate-800">{addon.name}</span>
+                          </div>
+                          <span className="text-xs font-black text-slate-900">+₹{addon.price}</span>
                         </div>
-                        <span className="text-xs font-black text-slate-900">+₹{addon.price}</span>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Step 5: Choose Date and Slot */}
               <div>
@@ -546,14 +703,17 @@ export default function BookingModal({ salon, isOpen, onClose }) {
         {!bookingComplete && (
           <div className="p-4 bg-white border-t border-slate-100 shrink-0">
             <div className="flex items-center justify-between text-xs mb-2">
-              <span className="text-slate-500">Service + {serviceType === 'home' ? 'Visiting Fee (₹99)' : 'In-Clinic (₹0)'} + Addons:</span>
+              <span className="text-slate-500">
+                {showAddons ? `Service + ${serviceType === 'home' ? 'Visiting Fee (₹99)' : 'In-Clinic (₹0)'} + Addons:` : `Service + ${serviceType === 'home' ? 'Visiting Fee (₹99)' : 'In-Clinic (₹0)'}:`}
+              </span>
               <span className="font-extrabold text-slate-900 text-sm">Total: ₹{finalTotal}</span>
             </div>
             <button
               onClick={handleConfirm}
-              className="w-full py-3.5 bg-[#E5A015] hover:bg-[#D49010] active:scale-98 text-slate-950 font-black text-sm rounded-2xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+              disabled={isProcessing}
+              className="w-full py-3.5 bg-[#E5A015] hover:bg-[#D49010] disabled:opacity-60 disabled:cursor-wait active:scale-98 text-slate-950 font-black text-sm rounded-2xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
             >
-              <span>Confirm & Book Appointment (₹{finalTotal})</span>
+              <span>{isProcessing ? 'Processing Payment...' : `Confirm & Book Appointment (₹${finalTotal})`}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

@@ -29,11 +29,28 @@ export default function HomePage() {
   const { selectedLocation } = useLocationContext();
   const [selectedSalonForBooking, setSelectedSalonForBooking] = React.useState(null);
   const [cms, setCms] = React.useState(null);
+  const [catalogProducts, setCatalogProducts] = React.useState(PRODUCTS);
+  const [homeStores, setHomeStores] = React.useState(STORES);
 
-  const topPicks = PRODUCTS.filter(p => p.isTopPick);
-  const accessoriesAndToys = PRODUCTS.filter(p => p.category === 'accessories');
-  const bestSellers = PRODUCTS.slice(3, 7);
-  const trendingProducts = PRODUCTS.slice(7, 11);
+  const topPicks = catalogProducts.filter(p => p.tags?.includes('top_pick') || (!p.tags?.length && p.isTopPick));
+  const newProducts = catalogProducts.filter(p => p.tags?.includes('new'));
+  const accessoriesAndToys = catalogProducts.filter(p => p.category === 'accessories');
+  const bestSellers = catalogProducts.slice(3, 7);
+  const trendingProducts = catalogProducts.filter(p => p.tags?.includes('trending'));
+  const storesFromProducts = [...new Map(
+    catalogProducts
+      .filter(product => product.storeName && product.storeName !== 'PAW NEAR Direct')
+      .map(product => [product.storeName, {
+        id: product.vendorId || product.storeName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        name: product.storeName,
+        rating: product.rating || 4.8,
+        reviewsCount: product.reviewsCount || 0,
+        distance: 'Nearby',
+        eta: '15 min',
+        image: product.image || '/images/hero_pets.jpg'
+      }])
+  ).values()];
+  const storesToDisplay = homeStores.length > 0 ? homeStores : storesFromProducts;
 
   const [homeSearchQuery, setHomeSearchQuery] = React.useState('');
 
@@ -42,6 +59,32 @@ export default function HomePage() {
     api.getPlatformCms().then(res => {
       if (!ignore && res?.success && res.cms) {
         setCms(res.cms);
+      }
+    }).catch(() => {});
+    api.getVendors().then(res => {
+      if (!ignore && res?.success && Array.isArray(res.vendors)) {
+        setHomeStores(res.vendors.map(vendor => ({
+          id: vendor._id || vendor.id,
+          name: vendor.storeName || vendor.name || 'Local Pet Store',
+          rating: vendor.rating || 4.8,
+          reviewsCount: vendor.reviewsCount || vendor.totalOrders || 0,
+          distance: vendor.location?.city || 'Nearby',
+          eta: vendor.isStoreOpen === false ? 'Closed' : '15 min',
+          image: vendor.photos?.storeFront || vendor.photos?.logo || '/images/hero_pets.jpg'
+        })));
+      }
+    }).catch(() => {});
+    api.getProducts().then(res => {
+      if (!ignore && res?.success && Array.isArray(res.products)) {
+        setCatalogProducts(res.products.map(product => ({
+          ...product,
+          id: product._id || product.id,
+          name: product.title || product.name,
+          image: product.primaryImage || product.image || product.images?.[0] || '/images/prod_drools.jpg',
+          storeName: product.vendorName || product.storeName || 'PAW NEAR Direct',
+          vendorId: product.vendor?._id || product.vendor || product.vendorId || '',
+          tags: Array.isArray(product.tags) ? product.tags : []
+        })));
       }
     }).catch(() => {});
     return () => {
@@ -96,13 +139,6 @@ export default function HomePage() {
               <span className="relative z-10 text-xs font-black text-amber-200">
                 {banner.ctaText || 'Explore'} →
               </span>
-              {banner.image && (
-                <img
-                  src={banner.image}
-                  alt=""
-                  className="absolute right-0 bottom-0 h-full w-1/2 object-cover opacity-80 mix-blend-screen"
-                />
-              )}
             </Link>
           ))}
         </section>
@@ -210,7 +246,7 @@ export default function HomePage() {
 
         {/* Vendors Carousel */}
         <div className="flex overflow-x-auto gap-3 sm:gap-4 pb-2 snap-x hide-scrollbar -mx-2 px-2">
-          {STORES.slice(0, 4).map((store, i) => {
+          {storesToDisplay.slice(0, 4).map((store, i) => {
             const isFirst = i === 0;
             const logoBg = isFirst ? 'bg-amber-400' : 'bg-teal-500';
             const logoText = isFirst ? 'text-slate-900' : 'text-white';
@@ -263,6 +299,9 @@ export default function HomePage() {
               </Link>
             )
           })}
+          {storesToDisplay.length === 0 && (
+            <p className="w-full py-6 text-center text-sm text-slate-400">No approved vendors nearby yet.</p>
+          )}
         </div>
       </section>
 
@@ -284,10 +323,33 @@ export default function HomePage() {
 
         {/* Horizontal Products Carousel */}
         <div className="flex overflow-x-auto gap-3 sm:gap-4 py-1 pb-3 snap-x hide-scrollbar -mx-2 px-2 items-stretch">
-          {PRODUCTS.slice(4, 9).map((product) => (
+          {catalogProducts.slice(4, 9).map((product) => (
             <div key={product.id} className="snap-start flex-shrink-0 flex">
               <ProductCard product={product} layout="horizontal" />
             </div>
+          ))}
+        </div>
+      </section>
+      )}
+
+      {/* New Arrivals */}
+      {newProducts.length > 0 && (
+      <section className="space-y-3 sm:space-y-4 mt-8">
+        <div className="flex items-center justify-between">
+          <h2 className="font-heading font-black text-slate-900 text-base sm:text-xl md:text-2xl tracking-tight">
+            New arrivals
+          </h2>
+          <Link
+            to="/products"
+            className="text-xs sm:text-sm font-medium text-slate-700 hover:text-[#E5A015] flex items-center gap-1 group transition-colors"
+          >
+            <span>View all</span>
+            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          {newProducts.slice(0, 4).map((product) => (
+            <ProductCard key={product.id} product={product} />
           ))}
         </div>
       </section>

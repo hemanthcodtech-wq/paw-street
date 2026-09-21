@@ -577,8 +577,18 @@ export function VendorProvider({ children }) {
 
       if (profileRes?.success && profileRes.vendor) {
         const v = profileRes.vendor;
-        setVendor(prev => ({ ...prev, ...v, id: v._id || v.id }));
-        localStorage.setItem('paw_vendor_profile', JSON.stringify(v));
+        const nextVendor = {
+          ...INITIAL_VENDOR,
+          ...v,
+          ...((v?.location && typeof v.location === 'object') ? { location: { ...INITIAL_VENDOR.location, ...v.location } } : {}),
+          ...((v?.photos && typeof v.photos === 'object') ? { photos: { ...INITIAL_VENDOR.photos, ...v.photos } } : {}),
+          ...((v?.serviceDeliveryModes && typeof v.serviceDeliveryModes === 'object') ? { serviceDeliveryModes: { ...INITIAL_VENDOR.serviceDeliveryModes, ...v.serviceDeliveryModes } } : {}),
+          id: v._id || v.id || '',
+          status: v.status || 'pending'
+        };
+
+        setVendor(prev => ({ ...prev, ...nextVendor, id: nextVendor.id }));
+        localStorage.setItem('paw_vendor_profile', JSON.stringify(nextVendor));
       }
 
       // 2. Fetch Products & Services Catalog

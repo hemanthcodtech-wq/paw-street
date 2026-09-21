@@ -23,6 +23,8 @@ import { useAdmin } from '../../context/AdminContext';
 export default function AdminPlatformPage() {
   const { 
     platformContent, 
+    productsGovernance,
+    updateProductTags,
     updateAnnouncementBar, 
     toggleFeaturedSection, 
     addHeroBanner, 
@@ -389,6 +391,70 @@ export default function AdminPlatformPage() {
           </div>
         </div>
 
+      </div>
+
+      {/* 4. Product Homepage Tags */}
+      <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
+            <Tag className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="font-heading font-black text-sm sm:text-base text-slate-900">
+              Homepage Product Tags
+            </h3>
+            <p className="text-[10px] sm:text-[11px] text-slate-400">
+              Choose which approved products appear in New Arrivals, Top Picks and Trending Now.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-2.5 text-xs">
+          {productsGovernance.filter(product => product.status === 'approved').map(product => {
+            const tags = product.tags || [];
+            const tagOptions = [
+              { id: 'new', label: 'New', style: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+              { id: 'top_pick', label: 'Top Pick', style: 'bg-amber-100 text-amber-900 border-amber-200' },
+              { id: 'trending', label: 'Trending', style: 'bg-blue-100 text-blue-800 border-blue-200' }
+            ];
+
+            return (
+              <div key={product.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <img
+                    src={product.image || '/images/prod_drools.jpg'}
+                    alt=""
+                    className="w-11 h-11 rounded-xl object-cover bg-white border border-slate-200 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="font-bold text-slate-800 truncate">{product.title}</p>
+                    <p className="text-[10px] text-slate-400 truncate">{product.vendorName} · ₹{product.price}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap sm:justify-end">
+                  {tagOptions.map(tag => {
+                    const active = tags.includes(tag.id);
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => updateProductTags(product.id, active ? tags.filter(value => value !== tag.id) : [...tags, tag.id])}
+                        className={`px-2.5 py-1 rounded-xl border text-[11px] font-bold transition-colors ${
+                          active ? tag.style : 'bg-white text-slate-400 border-slate-200'
+                        }`}
+                      >
+                        {active ? '✓ ' : ''}{tag.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+          {productsGovernance.filter(product => product.status === 'approved').length === 0 && (
+            <p className="text-sm text-slate-400 py-4 text-center">No approved products available to tag.</p>
+          )}
+        </div>
       </div>
 
       {/* Add Banner Modal */}

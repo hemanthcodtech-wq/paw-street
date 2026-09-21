@@ -283,7 +283,15 @@ export default function Header() {
         {/* Secondary Category Navigation (Desktop) */}
         <nav className="hidden lg:flex items-center gap-6 py-2.5 border-t border-slate-100 text-xs font-semibold text-slate-600">
           {navLinks.map((link) => {
-            const isActive = location.pathname === link.path;
+            const servicesTab = new URLSearchParams(location.search).get('tab');
+            const isServicesLink = link.path.startsWith('/services');
+            const isActive = isServicesLink
+              ? location.pathname === '/services' && (
+                  link.path.includes('tab=clinic')
+                    ? servicesTab === 'clinic'
+                    : !servicesTab || servicesTab === 'grooming'
+                )
+              : location.pathname === link.path;
             return (
               <Link
                 key={link.name}
@@ -326,7 +334,15 @@ export default function Header() {
                 key={link.name}
                 to={link.path}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="px-3 py-2 rounded-lg bg-slate-50 hover:bg-amber-50 text-xs font-semibold text-slate-700 hover:text-amber-700 transition-colors"
+                  className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
+                    location.pathname === '/services' && (
+                      link.path.includes('tab=clinic')
+                        ? new URLSearchParams(location.search).get('tab') === 'clinic'
+                        : (!new URLSearchParams(location.search).get('tab') || new URLSearchParams(location.search).get('tab') === 'grooming')
+                    )
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-slate-50 hover:bg-amber-50 text-slate-700 hover:text-amber-700'
+                  }`}
               >
                 {link.name}
               </Link>

@@ -29,7 +29,9 @@ export default function ProtectedRoute({ children, role = 'customer' }) {
 
   // 2. Vendor Role Guard
   if (role === 'vendor') {
-    const isVendorAuth = !!localStorage.getItem('paw_vendor_token') && vendor && (vendor.status === 'approved' || vendor.status === 'pending');
+    const hasVendorSession = !!(localStorage.getItem('paw_vendor_token') || localStorage.getItem('paw_token'));
+    const isVendorAuth = hasVendorSession;
+
     if (!isVendorAuth) {
       return <Navigate to="/vendor/login" state={{ from: location }} replace />;
     }

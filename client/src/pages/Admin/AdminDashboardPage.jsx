@@ -14,7 +14,6 @@ import {
   ChevronRight, 
   Sparkles, 
   ShieldCheck, 
-  Headphones, 
   Sliders, 
   Percent, 
   Truck, 
@@ -30,12 +29,10 @@ export default function AdminDashboardPage() {
     vendors, 
     productsGovernance, 
     revenueMetrics, 
-    supportTickets,
     totalVendorsCount,
     approvedVendorsCount,
     pendingVendorsCount,
     pendingProductsCount,
-    openTicketsCount,
     approveVendor,
     isLoading,
     refreshAdminData
@@ -98,8 +95,8 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Action Required Alert Cards (Pending Audits & Approvals) */}
-      {(pendingVendorsCount > 0 || pendingProductsCount > 0 || openTicketsCount > 0) && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {(pendingVendorsCount > 0 || pendingProductsCount > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           
           {/* Vendor Applications Awaiting Approval */}
           <div className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-2xs">
@@ -144,29 +141,6 @@ export default function AdminDashboardPage() {
               className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-colors shrink-0"
             >
               Verify
-            </Link>
-          </div>
-
-          {/* Open Support Tickets */}
-          <div className="bg-rose-50/80 border border-rose-200/90 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-2xs">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center font-black">
-                <Headphones className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[11px] font-bold text-rose-900 block">
-                  Support Queue
-                </span>
-                <p className="text-base font-black text-rose-950">
-                  {openTicketsCount} Active Tickets
-                </p>
-              </div>
-            </div>
-            <Link
-              to="/admin/support"
-              className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-colors shrink-0"
-            >
-              Assign
             </Link>
           </div>
 
@@ -421,28 +395,6 @@ export default function AdminDashboardPage() {
             <p className="text-xs text-slate-500">
               Live banner promotions, top announcement bar & flash deals without app redeployment.
             </p>
-          </div>
-
-          {/* Section 3.4 Support Queue & Staff Tile */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-xs space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center font-bold">
-                  <Headphones className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-900 text-sm">Support Operations</h3>
-                  <span className="text-[10px] text-slate-400">Customer Support</span>
-                </div>
-              </div>
-              <Link to="/admin/support" className="text-xs font-bold text-rose-600 hover:underline">
-                Queue
-              </Link>
-            </div>
-            <div className="flex items-center justify-between text-xs bg-slate-50 p-3 rounded-2xl border border-slate-100">
-              <span className="text-slate-500">Active Staff:</span>
-              <strong className="text-slate-900">3 Online Agents</strong>
-            </div>
           </div>
 
         </div>

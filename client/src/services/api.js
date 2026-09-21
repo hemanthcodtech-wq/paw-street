@@ -138,15 +138,13 @@ export const api = {
   getAdminProducts: () => request('/admin/products'),
   approveProduct: (id) => request(`/admin/products/${id}/approve`, { method: 'PUT' }),
   rejectProduct: (id, rejectionReason) => request(`/admin/products/${id}/reject`, { method: 'PUT', body: JSON.stringify({ rejectionReason }) }),
+  updateAdminProductTags: (id, tags) => request(`/admin/products/${id}/tags`, { method: 'PUT', body: JSON.stringify({ tags }) }),
   getAdminCms: () => request('/admin/cms'),
   updateAdminCms: (body) => request('/admin/cms', { method: 'PUT', body: JSON.stringify(body) }),
   getAdminBusinessSettings: () => request('/admin/business-settings'),
   updateAdminBusinessSettings: (body) => request('/admin/business-settings', { method: 'PUT', body: JSON.stringify(body) }),
   getAdminFinanceLedger: () => request('/admin/finance-ledger'),
   processAdminVendorPayout: (vendorId, body = {}) => request(`/admin/payouts/${vendorId}/process`, { method: 'POST', body: JSON.stringify(body) }),
-  getAdminSupport: () => request('/admin/support'),
-  updateAdminTicket: (id, body) => request(`/admin/support/ticket/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
-  createAdminTicket: (body) => request('/admin/support/ticket', { method: 'POST', body: JSON.stringify(body) }),
   getAdminOrders: () => request('/admin/orders'),
 
   // 9. Cloudinary Image Upload

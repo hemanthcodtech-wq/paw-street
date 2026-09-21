@@ -6,7 +6,6 @@ import {
   PackageCheck, 
   DollarSign, 
   Sliders, 
-  Headphones, 
   Menu, 
   X, 
   Bell, 
@@ -30,8 +29,7 @@ export default function AdminLayout({ children }) {
     adminUser, 
     approvedVendorsCount,
     pendingVendorsCount, 
-    pendingProductsCount, 
-    openTicketsCount,
+    pendingProductsCount,
     setIsAuthenticated 
   } = useAdmin();
   const location = useLocation();
@@ -85,18 +83,9 @@ export default function AdminLayout({ children }) {
       badgeColor: 'bg-emerald-500 text-white font-bold',
       section: '3.3 App Control'
     },
-    {
-      name: 'Support Team & Tickets',
-      shortName: 'Support',
-      path: '/admin/support',
-      icon: Headphones,
-      badge: openTicketsCount > 0 ? `${openTicketsCount} Open` : null,
-      badgeColor: 'bg-rose-500 text-white font-black',
-      section: '3.4 Operations'
-    }
   ];
 
-  const totalAlertsCount = pendingVendorsCount + pendingProductsCount + openTicketsCount;
+  const totalAlertsCount = pendingVendorsCount + pendingProductsCount;
 
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-slate-900 flex flex-col font-sans selection:bg-[#FFB703] selection:text-slate-950">
@@ -205,19 +194,6 @@ export default function AdminLayout({ children }) {
                         <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
                       </Link>
                     )}
-                    {openTicketsCount > 0 && (
-                      <Link
-                        to="/admin/support"
-                        onClick={() => setNotificationsOpen(false)}
-                        className="flex items-center justify-between p-2 rounded-xl hover:bg-rose-50 text-slate-800 group"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Headphones className="w-4 h-4 text-rose-600" />
-                          <span><strong>{openTicketsCount}</strong> Support Tickets</span>
-                        </div>
-                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-                      </Link>
-                    )}
                     {totalAlertsCount === 0 && (
                       <p className="text-center py-4 text-slate-400 text-xs">
                         🎉 All vendor applications, products & tickets are up to date!
@@ -318,8 +294,8 @@ export default function AdminLayout({ children }) {
                 <strong className="text-amber-600 font-bold">{pendingVendorsCount + pendingProductsCount}</strong>
               </div>
               <div className="flex justify-between text-slate-700 text-[11px]">
-                <span>Support Load:</span>
-                <strong className="text-rose-600 font-bold">{openTicketsCount} Active</strong>
+                <span>Platform Status:</span>
+                <strong className="text-emerald-600 font-bold">Operational</strong>
               </div>
             </div>
 

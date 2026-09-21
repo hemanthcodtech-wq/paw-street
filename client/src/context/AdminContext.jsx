@@ -277,50 +277,6 @@ export function AdminProvider({ children }) {
     ]
   });
 
-  // ----------------------------------------------------
-  // 3.4 SUPPORT TEAM & TICKET MANAGEMENT STATE & DATA
-  // ----------------------------------------------------
-  const [supportStaff, setSupportStaff] = useState([
-    {
-      id: 'STF-001',
-      name: 'Sneha Kulkarni',
-      email: 'sneha.k@pawnear.com',
-      phone: '+91 98220 11223',
-      role: 'Tier 1 Senior Support Lead',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
-      activeTickets: 3,
-      resolvedTickets: 142,
-      status: 'online',
-      rating: 4.9
-    },
-    {
-      id: 'STF-002',
-      name: 'Aditya Verma',
-      email: 'aditya.v@pawnear.com',
-      phone: '+91 97110 44556',
-      role: 'Vendor Compliance & Dispute Officer',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-      activeTickets: 2,
-      resolvedTickets: 98,
-      status: 'online',
-      rating: 4.8
-    },
-    {
-      id: 'STF-003',
-      name: 'Dr. Meenakshi Iyer',
-      email: 'dr.meenakshi@pawnear.com',
-      phone: '+91 99001 88990',
-      role: 'Veterinary Support & Prescription Auditor',
-      avatar: 'https://images.unsplash.com/photo-1594824813512-9c3f2530d970?auto=format&fit=crop&w=200&q=80',
-      activeTickets: 1,
-      resolvedTickets: 76,
-      status: 'busy',
-      rating: 5.0
-    }
-  ]);
-
-  const [supportTickets, setSupportTickets] = useState([]);
-
   // ====================================================
   // FETCH ALL ADMIN DATA DIRECTLY FROM MONGODB ATLAS
   // ====================================================
@@ -456,11 +412,6 @@ export function AdminProvider({ children }) {
         }
       }
 
-      // 7. Fetch Support Tickets from DB
-      const supportRes = await api.getAdminSupport();
-      if (supportRes && supportRes.success && Array.isArray(supportRes.tickets)) {
-        setSupportTickets(supportRes.tickets);
-      }
     } catch (err) {
       console.warn('Live admin data load notice:', err.message);
     } finally {
@@ -586,6 +537,24 @@ export function AdminProvider({ children }) {
       if (metricsRes?.success) setRevenueMetrics(prev => ({ ...prev, ...metricsRes.metrics }));
     } catch (err) {
       console.warn('Product rejection sync notice:', err.message);
+    }
+  };
+
+  const updateProductTags = async (productId, tags) => {
+    const normalizedTags = [...new Set(tags)];
+    setProductsGovernance(prev => prev.map(product => (
+      product.id === productId || product._id === productId
+        ? { ...product, tags: normalizedTags }
+        : product
+    )));
+
+    try {
+      const response = await api.updateAdminProductTags(productId, normalizedTags);
+      if (!response?.success) {
+        throw new Error(response?.message || 'Product tags could not be saved.');
+      }
+    } catch (err) {
+      console.warn('Product tag sync notice:', err.message);
     }
   };
 
@@ -764,78 +733,11 @@ export function AdminProvider({ children }) {
     });
   };
 
-  // 3.4 Support Team Actions
-  const addSupportStaff = (staff) => {
-    const newId = `STF-${String(supportStaff.length + 1).padStart(3, '0')}`;
-    setSupportStaff(prev => [...prev, {
-      ...staff,
-      id: newId,
-      activeTickets: 0,
-      resolvedTickets: 0,
-      status: 'online',
-      rating: 5.0,
-      avatar: staff.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80'
-    }]);
-  };
-
-  const assignTicketToStaff = async (ticketId, staffId) => {
-    const staffMember = supportStaff.find(s => s.id === staffId);
-    if (!staffMember) return;
-
-    setSupportTickets(prev => prev.map(t => {
-      if (t.id === ticketId || t._id === ticketId) {
-        return {
-          ...t,
-          assignedTo: staffId,
-          assignedName: staffMember.name,
-          status: t.status === 'open' ? 'in_progress' : t.status
-        };
-      }
-      return t;
-    }));
-
-    setSupportStaff(prev => prev.map(s => {
-      if (s.id === staffId) {
-        return { ...s, activeTickets: s.activeTickets + 1 };
-      }
-      return s;
-    }));
-
-    try {
-      await api.updateAdminTicket(ticketId, {
-        assignedStaff: { id: staffId, name: staffMember.name },
-        status: 'in_progress'
-      });
-    } catch (err) {
-      console.warn('Assign ticket sync notice:', err.message);
-    }
-  };
-
-  const updateTicketStatus = async (ticketId, status, resolutionNotes = '') => {
-    setSupportTickets(prev => prev.map(t => {
-      if (t.id === ticketId || t._id === ticketId) {
-        return {
-          ...t,
-          status,
-          ...(resolutionNotes ? { resolution: resolutionNotes } : {})
-        };
-      }
-      return t;
-    }));
-
-    try {
-      await api.updateAdminTicket(ticketId, { status, resolution: resolutionNotes });
-    } catch (err) {
-      console.warn('Update ticket status sync notice:', err.message);
-    }
-  };
-
   // Computed Quick Counters for Badges & Header
   const totalVendorsCount = Number(revenueMetrics.totalVendors ?? vendors.length);
   const approvedVendorsCount = Number(revenueMetrics.approvedVendors ?? vendors.filter(v => v.status === 'approved').length);
   const pendingVendorsCount = Number(revenueMetrics.pendingVendors ?? vendors.filter(v => v.status === 'pending').length);
   const pendingProductsCount = Number(revenueMetrics.pendingProducts ?? productsGovernance.filter(p => p.status === 'pending_approval').length);
-  const openTicketsCount = Number(revenueMetrics.openTickets ?? supportTickets.filter(t => t.status === 'open' || t.status === 'in_progress').length);
 
   return (
     <AdminContext.Provider
@@ -862,6 +764,7 @@ export function AdminProvider({ children }) {
         productsGovernance,
         approveProduct,
         rejectProduct,
+        updateProductTags,
         pendingProductsCount,
         // 3.2 Revenue Controls
         businessSettings,
@@ -880,14 +783,7 @@ export function AdminProvider({ children }) {
         toggleHeroBannerStatus,
         deleteHeroBanner,
         addPromoCoupon,
-        toggleCouponStatus,
-        // 3.4 Support Team
-        supportStaff,
-        supportTickets,
-        addSupportStaff,
-        assignTicketToStaff,
-        updateTicketStatus,
-        openTicketsCount
+        toggleCouponStatus
       }}
     >
       {children}

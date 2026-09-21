@@ -437,8 +437,11 @@ router.get('/products', protect, authorizeRoles('vendor', 'admin'), async (req, 
       primaryImage: p.primaryImage,
       description: p.description,
       durationMinutes: p.durationMinutes,
-      visitingFee: p.serviceModes?.includes('At-Home Service') ? 99 : 0,
-      deliveryMode: p.serviceModes?.includes('At-Home Service') ? 'home_service' : 'clinic_visit',
+      serviceModes: p.serviceModes || [],
+      visitingFee: p.visitingFee || 0,
+      deliveryMode: p.serviceModes?.length === 2
+        ? 'both'
+        : p.serviceModes?.includes('At-Home Service') ? 'home_service' : 'clinic_visit',
       vendor: vendor._id,
       vendorName: vendor.storeName
     }));
@@ -476,13 +479,19 @@ router.post('/products', protect, authorizeRoles('vendor', 'admin'), async (req,
       image,
       primaryImage,
       durationMinutes,
-      deliveryMode
+      deliveryMode,
+      serviceModes,
+      visitingFee
     } = req.body;
 
     const finalTitle = title || name || 'New Pet Item';
     const isService = type === 'service';
-    const serviceModes = isService
-      ? (deliveryMode === 'home_service' ? ['At-Home Service'] : ['Clinic / Spa Visit'])
+    const normalizedServiceModes = isService
+      ? (Array.isArray(serviceModes)
+        ? serviceModes
+        : deliveryMode === 'both'
+          ? ['At-Home Service', 'Clinic / Spa Visit']
+          : deliveryMode === 'home_service' ? ['At-Home Service'] : ['Clinic / Spa Visit'])
       : [];
 
     const newProduct = await Product.create({
@@ -497,7 +506,8 @@ router.post('/products', protect, authorizeRoles('vendor', 'admin'), async (req,
       stock: Number(stockCount) || (isService ? 999 : 10),
       primaryImage: primaryImage || image || (isService ? '/images/store_grooming.jpg' : '/images/prod_pedigree.jpg'),
       images: [primaryImage || image || '/images/prod_pedigree.jpg'],
-      serviceModes,
+      serviceModes: normalizedServiceModes,
+      visitingFee: normalizedServiceModes.includes('At-Home Service') ? Number(visitingFee) || 0 : 0,
       durationMinutes: Number(durationMinutes) || 45,
       vendor: vendor._id,
       vendorName: vendor.storeName,
@@ -546,6 +556,15 @@ router.put('/products/:id', protect, authorizeRoles('vendor', 'admin'), async (r
     if (updates.name && !updates.title) updates.title = updates.name;
     if (updates.stockCount !== undefined) updates.stock = updates.stockCount;
     if (updates.image && !updates.primaryImage) updates.primaryImage = updates.image;
+    if (product.type === 'service' && updates.deliveryMode) {
+      updates.serviceModes = updates.deliveryMode === 'both'
+        ? ['At-Home Service', 'Clinic / Spa Visit']
+        : updates.deliveryMode === 'home_service'
+          ? ['At-Home Service']
+          : ['Clinic / Spa Visit'];
+      if (updates.deliveryMode === 'clinic_visit') updates.visitingFee = 0;
+      delete updates.deliveryMode;
+    }
     if (updates.isActive !== undefined) {
       updates.status = updates.isActive ? 'approved' : 'pending_approval';
     }

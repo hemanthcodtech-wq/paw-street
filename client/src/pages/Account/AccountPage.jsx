@@ -37,7 +37,7 @@ export default function AccountPage() {
 
   const { user, pets, addPet, deletePet, uploadAvatar, logout } = useAuth();
   const { wishlist, addToCart } = useCart();
-  const { savedAddresses } = useLocationContext();
+  const { savedAddresses, addAddress, deleteAddress } = useLocationContext();
   const { orders } = useOrders();
 
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -55,6 +55,17 @@ export default function AccountPage() {
     vaccinated: true,
     vaccineExpiry: '30 Dec 2026',
     allergies: 'None'
+  });
+  const [showAddAddress, setShowAddAddress] = useState(savedAddresses.length === 0);
+  const [newAddress, setNewAddress] = useState({
+    type: 'Home',
+    name: user?.name || '',
+    phone: user?.phone || '',
+    addressLine1: '',
+    area: '',
+    city: 'Hyderabad',
+    state: 'Telangana',
+    pincode: ''
   });
 
   const handleAvatarUpload = async (e) => {
@@ -96,6 +107,22 @@ export default function AccountPage() {
         allergies: 'None'
       });
     }
+  };
+
+  const handleAddAddressSubmit = (e) => {
+    e.preventDefault();
+    addAddress({ ...newAddress, tag: newAddress.type });
+    setShowAddAddress(false);
+    setNewAddress({
+      type: 'Home',
+      name: user?.name || '',
+      phone: user?.phone || '',
+      addressLine1: '',
+      area: '',
+      city: 'Hyderabad',
+      state: 'Telangana',
+      pincode: ''
+    });
   };
 
   const wishlistedProducts = PRODUCTS.filter(p => wishlist.includes(p.id));
@@ -462,15 +489,25 @@ export default function AccountPage() {
                         ))}
                       </div>
 
+                      {order.hasService && order.appointment && (
+                        <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-900">
+                          <span className="font-bold">Appointment:</span>{' '}
+                          {order.appointment.scheduledSlot || 'Scheduled appointment'}
+                          {order.appointment.mode ? ` • ${order.appointment.mode === 'clinic_visit' ? 'In-Clinic Visit' : 'At-Home Service'}` : ''}
+                        </div>
+                      )}
+
                       {/* Order Actions */}
                       <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-                        <Link
-                          to={`/track-order/${order.id}`}
-                          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
-                        >
-                          <Zap className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Track Live Map</span>
-                        </Link>
+                        {!order.items?.some(item => item.type === 'service' || item.isService) && (
+                          <Link
+                            to={`/track-order/${order.id}`}
+                            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                          >
+                            <Zap className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Track Live Map</span>
+                          </Link>
+                        )}
 
                         <button
                           onClick={() => {
@@ -527,18 +564,58 @@ export default function AccountPage() {
           {/* TAB 4: SAVED ADDRESSES */}
           {activeTab === 'addresses' && (
             <div className="space-y-4">
-              <h2 className="font-heading font-black text-slate-900 text-xl">Saved Delivery Addresses</h2>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-heading font-black text-slate-900 text-xl">Saved Delivery Addresses</h2>
+                  <p className="text-xs text-slate-500 mt-1">Save addresses for faster checkout.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddAddress(prev => !prev)}
+                  className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Address</span>
+                </button>
+              </div>
+
+              {showAddAddress && (
+                <form onSubmit={handleAddAddressSubmit} className="bg-white rounded-3xl p-5 border border-amber-200 shadow-xs space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
+                    <MapPin className="w-4 h-4 text-amber-500" />
+                    Add delivery address
+                  </div>
+                  <div className="flex gap-2">
+                    {['Home', 'Work', 'Other'].map(type => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setNewAddress(prev => ({ ...prev, type }))}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-lg border ${newAddress.type === type ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-slate-600 border-slate-200'}`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <input required value={newAddress.name} onChange={e => setNewAddress({ ...newAddress, name: e.target.value })} placeholder="Recipient name" className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+                    <input required value={newAddress.phone} onChange={e => setNewAddress({ ...newAddress, phone: e.target.value })} placeholder="Phone number" className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+                    <input required value={newAddress.addressLine1} onChange={e => setNewAddress({ ...newAddress, addressLine1: e.target.value })} placeholder="Flat / house / street" className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:col-span-2" />
+                    <input required value={newAddress.area} onChange={e => setNewAddress({ ...newAddress, area: e.target.value })} placeholder="Area / locality" className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+                    <input required value={newAddress.pincode} onChange={e => setNewAddress({ ...newAddress, pincode: e.target.value })} placeholder="Pincode" className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button type="button" onClick={() => setShowAddAddress(false)} className="px-4 py-2 text-xs font-bold text-slate-500">Cancel</button>
+                    <button type="submit" className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl">Save Address</button>
+                  </div>
+                </form>
+              )}
+
               {savedAddresses.length === 0 ? (
-                <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 space-y-3">
-                  <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center mx-auto">
-                    <MapPin className="w-8 h-8" />
-                  </div>
-                  <div>
-                    <h3 className="font-heading font-bold text-slate-800 text-base">No Saved Addresses</h3>
-                    <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-                      Save your home, apartment, or office address for smooth 1-click express deliveries.
-                    </p>
-                  </div>
+                <div className="bg-white rounded-3xl p-8 text-center border border-slate-200 space-y-2">
+                  <MapPin className="w-8 h-8 text-blue-500 mx-auto" />
+                  <h3 className="font-heading font-bold text-slate-800 text-base">No Saved Addresses</h3>
+                  <p className="text-xs text-slate-500">Add your home, work, or office address above.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -555,6 +632,13 @@ export default function AccountPage() {
                       <p className="text-xs font-bold text-slate-800">{addr.addressLine1}</p>
                       <p className="text-xs text-slate-500">{addr.shortDisplay}</p>
                       <p className="text-[11px] text-slate-400 pt-1">Phone: {addr.phone || user?.phone || 'N/A'}</p>
+                      <button
+                        type="button"
+                        onClick={() => deleteAddress(addr.id)}
+                        className="text-[11px] font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 pt-1"
+                      >
+                        <Trash2 className="w-3 h-3" /> Remove
+                      </button>
                     </div>
                   ))}
                 </div>

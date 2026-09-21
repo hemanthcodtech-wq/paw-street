@@ -355,59 +355,6 @@ export default function VendorOnboardingPage() {
             </p>
           </div>
 
-          {/* Verification Pipeline Stepper */}
-          <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-200/80 text-left space-y-3">
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Verification Pipeline
-            </h4>
-
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-              <div className="bg-white p-3 rounded-xl border border-emerald-200 shadow-2xs">
-                <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> Step 1
-                </span>
-                <p className="font-bold text-slate-900 text-xs mt-0.5">Submitted</p>
-                <p className="text-[10px] text-slate-400">Application logged</p>
-              </div>
-
-              <div className="bg-amber-50 p-3 rounded-xl border border-amber-300 shadow-2xs">
-                <span className="text-[10px] font-bold text-amber-700 flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> Step 2
-                </span>
-                <p className="font-bold text-slate-900 text-xs mt-0.5">KYC Check</p>
-                <p className="text-[10px] text-slate-600">PAN & Aadhaar match</p>
-              </div>
-
-              <div className="bg-white p-3 rounded-xl border border-slate-200 opacity-60">
-                <span className="text-[10px] font-bold text-slate-400">Step 3</span>
-                <p className="font-bold text-slate-700 text-xs mt-0.5">Licence Audit</p>
-                <p className="text-[10px] text-slate-400">Trade permit verify</p>
-              </div>
-
-              <div className="bg-white p-3 rounded-xl border border-slate-200 opacity-60">
-                <span className="text-[10px] font-bold text-slate-400">Step 4</span>
-                <p className="font-bold text-slate-700 text-xs mt-0.5">Store Live</p>
-                <p className="text-[10px] text-slate-400">Accept orders</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Submission Key Details */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 text-left space-y-2 text-xs">
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Tracking Reference ID:</span>
-              <span className="font-mono font-bold text-slate-900">{submittedApplication.id}</span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Store Licence & PAN:</span>
-              <span className="font-bold text-slate-800">{submittedApplication.storeLicenceNumber} • {submittedApplication.panNumber}</span>
-            </div>
-            <div className="flex justify-between py-1">
-              <span className="text-slate-500">Google Maps Geolocation:</span>
-              <span className="font-mono text-slate-800 font-bold">{submittedApplication.location?.lat}, {submittedApplication.location?.lng}</span>
-            </div>
-          </div>
-
           <div className="pt-2">
             <Link
               to="/"
