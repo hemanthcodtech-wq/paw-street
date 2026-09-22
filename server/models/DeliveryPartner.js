@@ -6,6 +6,18 @@ const deliveryPartnerSchema = new mongoose.Schema({
     ref: 'User',
     required: false
   },
+  // Vendor this rider belongs to (store-scoped delivery)
+  vendorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Vendor',
+    required: false,
+    default: null
+  },
+  // Subdoc ID within vendor.deliveryTeam for cross-reference
+  vendorTeamMemberId: {
+    type: String,
+    default: null
+  },
   name: {
     type: String,
     required: true,

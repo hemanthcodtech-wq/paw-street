@@ -840,29 +840,46 @@ router.put('/orders/:id/assign', protect, authorizeRoles('vendor', 'admin'), asy
       });
     }
 
+    // Look up the rider in vendor's deliveryTeam subdoc
+    const riderSubdoc = vendor.deliveryTeam && deliveryBoyId ? vendor.deliveryTeam.id(deliveryBoyId) : null;
+
     order.assignedDeliveryBoyId = deliveryBoyId;
+
+    // Save rider name + phone for customer-facing tracking
+    if (riderSubdoc) {
+      order.riderName = riderSubdoc.name;
+      order.riderPhone = riderSubdoc.phone;
+
+      // If rider has a linked DeliveryPartner doc, set assignedRider ObjectId
+      if (riderSubdoc.userId) {
+        const DeliveryPartner = require('../models/DeliveryPartner');
+        const partnerDoc = await DeliveryPartner.findOne({ user: riderSubdoc.userId });
+        if (partnerDoc) {
+          order.assignedRider = partnerDoc._id;
+        }
+      }
+    }
+
     order.status = 'out_for_delivery';
     order.statusTimeline.push({
       status: 'out_for_delivery',
       timestamp: new Date(),
-      notes: `Assigned to delivery team partner (ID: ${deliveryBoyId})`
+      notes: `Assigned to ${riderSubdoc ? riderSubdoc.name : 'delivery team partner'} (ID: ${deliveryBoyId})`
     });
 
     await order.save();
 
     // Mark rider busy in vendor delivery team
-    if (vendor.deliveryTeam && deliveryBoyId) {
-      const rider = vendor.deliveryTeam.id(deliveryBoyId);
-      if (rider) {
-        rider.status = 'busy';
-        await vendor.save();
-      }
+    if (riderSubdoc) {
+      riderSubdoc.status = 'busy';
+      await vendor.save();
     }
 
     res.json({
       success: true,
-      message: 'Delivery partner assigned successfully!',
-      order
+      message: `Order assigned to ${riderSubdoc ? riderSubdoc.name : 'delivery partner'} successfully!`,
+      order,
+      assignedRiderName: riderSubdoc ? riderSubdoc.name : null
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -887,6 +904,9 @@ router.get('/delivery-team', protect, authorizeRoles('vendor', 'admin'), async (
       _id: b._id,
       name: b.name,
       phone: b.phone,
+      email: b.email || '',
+      userId: b.userId ? b.userId.toString() : null,
+      canLogin: !!(b.email),
       role: b.role,
       roleTitle: b.roleTitle,
       vehicleType: b.vehicleType,
@@ -910,7 +930,7 @@ router.get('/delivery-team', protect, authorizeRoles('vendor', 'admin'), async (
 });
 
 // @route   POST /api/vendors/delivery-team
-// @desc    Add a rider to THIS vendor's fleet
+// @desc    Add a rider to THIS vendor's fleet (optionally creates login credentials)
 router.post('/delivery-team', protect, authorizeRoles('vendor', 'admin'), async (req, res) => {
   try {
     const vendor = await getAuthenticatedVendor(req);
@@ -921,17 +941,71 @@ router.post('/delivery-team', protect, authorizeRoles('vendor', 'admin'), async 
     const {
       name,
       phone,
+      email,
+      password,
       role,
       roleTitle,
       vehicleType,
       vehicleNumber,
       drivingLicence,
-      avatar
+      avatar,
+      bankDetails
     } = req.body;
+
+    let linkedUserId = null;
+    let deliveryPartnerId = null;
+
+    // If email + password are provided, create a User account so the rider can log in
+    if (email && password) {
+      const normalizedEmail = email.trim().toLowerCase();
+
+      // Create or reuse User account with role 'delivery'
+      let riderUser = await User.findOne({ email: normalizedEmail }).select('+password');
+      if (!riderUser) {
+        riderUser = await User.create({
+          name,
+          email: normalizedEmail,
+          password,
+          phone: phone || '',
+          role: 'delivery'
+        });
+      } else {
+        // Update role to delivery if needed
+        if (riderUser.role !== 'delivery') {
+          riderUser.role = 'delivery';
+          await riderUser.save();
+        }
+      }
+      linkedUserId = riderUser._id;
+
+      // Create or link a DeliveryPartner doc scoped to this vendor
+      const DeliveryPartner = require('../models/DeliveryPartner');
+      let partnerDoc = await DeliveryPartner.findOne({ $or: [{ user: riderUser._id }, { email: normalizedEmail }] });
+      if (!partnerDoc) {
+        partnerDoc = await DeliveryPartner.create({
+          user: riderUser._id,
+          vendorId: vendor._id,
+          name,
+          email: normalizedEmail,
+          phone: phone || `+91 ${Math.floor(9000000000 + Math.random() * 999999999)}`,
+          vehicleType: vehicleType || 'Electric Bike',
+          vehicleNumber: vehicleNumber || 'Pending KYC'
+        });
+      } else {
+        // Update vendorId if not set
+        if (!partnerDoc.vendorId) {
+          partnerDoc.vendorId = vendor._id;
+          await partnerDoc.save();
+        }
+      }
+      deliveryPartnerId = partnerDoc._id;
+    }
 
     const newBoy = {
       name,
       phone,
+      email: email ? email.trim().toLowerCase() : '',
+      userId: linkedUserId,
       role: role || 'delivery_rider',
       roleTitle: roleTitle || 'Quick Delivery Partner',
       vehicleType: vehicleType || 'Electric Bike',
@@ -941,7 +1015,14 @@ router.post('/delivery-team', protect, authorizeRoles('vendor', 'admin'), async 
       rating: 5.0,
       totalDeliveries: 0,
       joinedDate: new Date().toISOString().split('T')[0],
-      avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`
+      avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
+      bankDetails: {
+        accountHolderName: bankDetails?.accountHolderName || name || '',
+        accountNumber: bankDetails?.accountNumber || '',
+        ifscCode: bankDetails?.ifscCode || '',
+        bankName: bankDetails?.bankName || '',
+        upiId: bankDetails?.upiId || ''
+      }
     };
 
     vendor.deliveryTeam.push(newBoy);
@@ -949,12 +1030,23 @@ router.post('/delivery-team', protect, authorizeRoles('vendor', 'admin'), async 
 
     const created = vendor.deliveryTeam[vendor.deliveryTeam.length - 1];
 
+    // Save vendorTeamMemberId on the DeliveryPartner doc for cross-reference
+    if (deliveryPartnerId) {
+      const DeliveryPartner = require('../models/DeliveryPartner');
+      await DeliveryPartner.findByIdAndUpdate(deliveryPartnerId, {
+        vendorTeamMemberId: created._id.toString()
+      });
+    }
+
     res.status(201).json({
       success: true,
-      message: 'Delivery partner added to your fleet!',
+      message: email && password
+        ? `Delivery partner added! They can log in at /delivery/login with email: ${email}`
+        : 'Delivery partner added to your fleet!',
       deliveryBoy: {
         ...created.toObject(),
-        id: created._id.toString()
+        id: created._id.toString(),
+        canLogin: !!(email && password)
       }
     });
   } catch (error) {

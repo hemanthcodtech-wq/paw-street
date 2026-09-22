@@ -59,6 +59,21 @@ export default function VendorOrdersPage() {
     }
   };
 
+  // Filter available staff by order type — role-scoped assignment
+  const getEligibleStaff = (order) => {
+    if (!order) return deliveryBoys;
+    if (order.orderType === 'product_delivery') {
+      // Only delivery riders handle product deliveries + COD
+      return deliveryBoys.filter(b => b.role === 'delivery_rider' || !b.role);
+    }
+    if (order.orderType === 'home_service') {
+      // Home groomers and mobile vets handle at-home service bookings
+      return deliveryBoys.filter(b => b.role === 'home_groomer' || b.role === 'mobile_vet');
+    }
+    // Clinic visits — any available staff
+    return deliveryBoys;
+  };
+
   const [orderTypeFilter, setOrderTypeFilter] = useState('all'); // 'all' | 'product_delivery' | 'home_service' | 'clinic_visit'
 
   const filteredOrders = orders.filter(o => {
@@ -414,8 +429,36 @@ export default function VendorOrdersPage() {
                     Select Staff Member based on Role & Availability *
                   </label>
 
+                  {/* Role-scope info banner */}
+                  {selectedOrderForAssignment.orderType === 'product_delivery' && (
+                    <div className="mb-3 bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-800 font-medium space-y-1">
+                      <p className="font-bold">📦 Product Delivery — Only Delivery Riders shown</p>
+                      {selectedOrderForAssignment.paymentMethod?.toLowerCase().includes('cod') || selectedOrderForAssignment.paymentStatus === 'Pending Payment' ? (
+                        <p>⚠️ <strong>COD Order</strong> — selected rider must collect <strong>₹{selectedOrderForAssignment.totalAmount}</strong> from customer</p>
+                      ) : (
+                        <p>✅ Prepaid order — no cash collection required from customer</p>
+                      )}
+                    </div>
+                  )}
+                  {selectedOrderForAssignment.orderType === 'home_service' && (
+                    <div className="mb-3 bg-purple-50 border border-purple-200 rounded-xl p-3 text-[11px] text-purple-800 font-medium">
+                      <p className="font-bold">🏠 At-Home Service — Only Home Groomers & Mobile Vets shown</p>
+                      <p className="mt-0.5">Service staff will visit the customer's home. No COD collection needed.</p>
+                    </div>
+                  )}
+
                   <div className="space-y-2 max-h-56 sm:max-h-60 overflow-y-auto pr-1">
-                    {deliveryBoys.map(boy => {
+                    {getEligibleStaff(selectedOrderForAssignment).length === 0 && (
+                      <div className="text-center py-6 text-slate-400">
+                        <p className="font-bold text-sm">No eligible staff available</p>
+                        <p className="text-xs mt-1">
+                          {selectedOrderForAssignment.orderType === 'home_service'
+                            ? 'Add a Home Groomer or Mobile Vet in your Delivery Team page'
+                            : 'Add a Delivery Rider in your Delivery Team page'}
+                        </p>
+                      </div>
+                    )}
+                    {getEligibleStaff(selectedOrderForAssignment).map(boy => {
                       const isAvail = boy.status === 'available';
                       const isSelected = selectedDeliveryBoyId === boy.id;
 
@@ -435,6 +478,11 @@ export default function VendorOrdersPage() {
                               <p className="font-bold text-slate-900 text-xs">{boy.name}</p>
                               <p className="text-[10px] text-amber-700 font-bold">{boy.roleTitle || boy.vehicleType}</p>
                               <p className="text-[9px] text-slate-400">{boy.vehicleNumber}</p>
+                              {boy.email && (
+                                <p className="text-[9px] text-indigo-600 font-bold flex items-center gap-0.5 mt-0.5">
+                                  <UserCheck className="w-2.5 h-2.5" /> Portal Access • {boy.email}
+                                </p>
+                              )}
                             </div>
                           </div>
 

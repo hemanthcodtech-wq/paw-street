@@ -125,6 +125,8 @@ const vendorSchema = new mongoose.Schema({
   deliveryTeam: [{
     name: { type: String, required: true },
     phone: { type: String, required: true },
+    email: { type: String, default: '' },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     role: { type: String, default: 'delivery_rider' },
     roleTitle: { type: String, default: 'Quick Delivery Partner' },
     vehicleType: { type: String, default: 'Electric Bike' },
@@ -134,7 +136,15 @@ const vendorSchema = new mongoose.Schema({
     rating: { type: Number, default: 4.9 },
     totalDeliveries: { type: Number, default: 0 },
     joinedDate: { type: String, default: () => new Date().toISOString().split('T')[0] },
-    avatar: { type: String, default: '' }
+    avatar: { type: String, default: '' },
+    // Bank / UPI details for payout reconciliation
+    bankDetails: {
+      accountHolderName: { type: String, default: '' },
+      accountNumber: { type: String, default: '' },
+      ifscCode: { type: String, default: '' },
+      bankName: { type: String, default: '' },
+      upiId: { type: String, default: '' }
+    }
   }]
 }, {
   timestamps: true

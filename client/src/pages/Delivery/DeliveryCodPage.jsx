@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Banknote, 
@@ -14,33 +14,63 @@ import {
   Plus,
   RefreshCw,
   Building2,
-  DollarSign
+  DollarSign,
+  Inbox
 } from 'lucide-react';
 import { useDelivery } from '../../context/DeliveryContext';
+import { api } from '../../services/api';
 
 export default function DeliveryCodPage() {
   const navigate = useNavigate();
   const { 
     rider, 
     assignments, 
-    codTransactions, 
+    codTransactions: ctxTransactions,
+    setCodTransactions,
     collectCodPayment, 
     updateDeliveryStatus, 
     reconcileCashDeposit 
   } = useDelivery();
 
-  // Find active COD orders awaiting collection
+  // Real COD data from backend
+  const [realTransactions, setRealTransactions] = useState([]);
+  const [realCashInHand, setRealCashInHand] = useState(null);
+  const [loadingCod, setLoadingCod] = useState(true);
+
+  const fetchCodData = async () => {
+    try {
+      const res = await api.getCodTransactions();
+      if (res?.success) {
+        setRealTransactions(res.transactions || []);
+        if (typeof res.cashInHand === 'number') setRealCashInHand(res.cashInHand);
+      }
+    } catch (err) {
+      console.warn('COD fetch notice:', err.message);
+    } finally {
+      setLoadingCod(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCodData();
+  }, []);
+
+  // Merge real transactions + any new ones added this session via collectCodPayment
+  const allTransactions = realTransactions.length > 0 ? realTransactions : ctxTransactions;
+  const cashInHand = realCashInHand !== null ? realCashInHand : rider.cashInHand;
+
+  // Find active COD orders awaiting collection (from real assignments)
   const pendingCodOrders = assignments.filter(a => a.paymentType === 'COD' && !a.isCodCollected && a.status !== 'delivered');
   const selectedCodOrder = pendingCodOrders[0] || null;
 
   // Form State for Active COD Collection
-  const [tenderedCash, setTenderedCash] = useState(selectedCodOrder ? selectedCodOrder.codAmount.toString() : '1500');
+  const [tenderedCash, setTenderedCash] = useState(selectedCodOrder ? selectedCodOrder.codAmount.toString() : '');
   const [enteredOtp, setEnteredOtp] = useState(selectedCodOrder ? selectedCodOrder.customerOtp : '');
-  const [paymentMode, setPaymentMode] = useState('Cash'); // 'Cash', 'UPI QR on Delivery'
+  const [paymentMode, setPaymentMode] = useState('Cash');
   const [collectionSuccess, setCollectionSuccess] = useState(false);
 
   // Form State for Platform Cash Deposit Reconciliation
-  const [depositAmount, setDepositAmount] = useState(rider.cashInHand.toString());
+  const [depositAmount, setDepositAmount] = useState(cashInHand.toString());
   const [depositRefNumber, setDepositRefNumber] = useState('');
   const [depositMethod, setDepositMethod] = useState('UPI Platform Transfer');
   const [depositSuccessMsg, setDepositSuccessMsg] = useState(false);
@@ -58,21 +88,28 @@ export default function DeliveryCodPage() {
     setCollectionSuccess(true);
     setTimeout(() => {
       setCollectionSuccess(false);
-    }, 4000);
+      fetchCodData(); // refresh ledger
+    }, 3000);
   };
 
   // Handle Deposit & Reconciliation
-  const handleReconcileDeposit = (e) => {
+  const handleReconcileDeposit = async (e) => {
     e.preventDefault();
-    if (!depositAmount || parseFloat(depositAmount) <= 0) return;
+    const numericAmount = parseFloat(depositAmount) || 0;
+    if (numericAmount <= 0) return;
 
-    reconcileCashDeposit(depositAmount, depositRefNumber || `REF-${Math.floor(100000 + Math.random() * 900000)}`, depositMethod);
+    await reconcileCashDeposit(depositAmount, depositRefNumber || `REF-${Math.floor(100000 + Math.random() * 900000)}`, depositMethod);
     setDepositSuccessMsg(true);
     setDepositRefNumber('');
     setTimeout(() => {
       setDepositSuccessMsg(false);
-    }, 4000);
+      fetchCodData(); // refresh after reconciliation
+    }, 3000);
   };
+
+  // Held / Reconciled summary
+  const totalHeld = allTransactions.filter(t => t.status === 'held_by_rider').reduce((s, t) => s + t.amount, 0);
+  const totalReconciled = allTransactions.filter(t => t.status === 'reconciled_with_platform').reduce((s, t) => s + t.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -103,11 +140,32 @@ export default function DeliveryCodPage() {
               Cash-in-Hand Balance
             </span>
             <p className="font-heading font-black text-xl text-white">
-              ₹{rider.cashInHand.toLocaleString('en-IN')}
+              ₹{cashInHand.toLocaleString('en-IN')}
             </p>
           </div>
         </div>
       </div>
+
+      {/* Summary chips */}
+      {allTransactions.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-2.5 text-xs space-y-0.5">
+            <span className="text-[10px] text-amber-700 font-bold uppercase block">Pending Deposit</span>
+            <span className="font-black text-amber-900 text-base">₹{totalHeld.toLocaleString('en-IN')}</span>
+          </div>
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-2.5 text-xs space-y-0.5">
+            <span className="text-[10px] text-emerald-700 font-bold uppercase block">Reconciled Today</span>
+            <span className="font-black text-emerald-900 text-base">₹{totalReconciled.toLocaleString('en-IN')}</span>
+          </div>
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs space-y-0.5">
+            <span className="text-[10px] text-slate-500 font-bold uppercase block">Total COD Orders</span>
+            <span className="font-black text-slate-900 text-base">{allTransactions.length}</span>
+          </div>
+          <button onClick={fetchCodData} className="ml-auto flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 bg-white border border-slate-200 px-3 py-2 rounded-xl transition-colors">
+            <RefreshCw className="w-3.5 h-3.5" /> Refresh
+          </button>
+        </div>
+      )}
 
       {/* Main Grid: Active COD Collection on Left + Platform Reconciliation on Right */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -235,7 +293,7 @@ export default function DeliveryCodPage() {
                   className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm active:scale-98"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Confirm Payment Collection &amp; Complete Delivery (₹{selectedCodOrder.codAmount})</span>
+                  <span>Confirm Payment Collection & Complete Delivery (₹{selectedCodOrder.codAmount})</span>
                 </button>
               </form>
 
@@ -264,55 +322,65 @@ export default function DeliveryCodPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-heading font-black text-base text-slate-900">
-                  Cash Collections Ledger (Today)
+                  Cash Collections Ledger
                 </h3>
-                <p className="text-xs text-slate-500">Itemized log of physical cash and COD orders collected during shift.</p>
+                <p className="text-xs text-slate-500">Real COD orders assigned to you from the store.</p>
               </div>
               <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
-                {codTransactions.length} Transactions
+                {allTransactions.length} Entries
               </span>
             </div>
 
-            <div className="space-y-2 text-xs">
-              {codTransactions.map(txn => {
-                const isReconciled = txn.status === 'reconciled_with_platform';
-                return (
-                  <div
-                    key={txn.id}
-                    className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black shrink-0 ${
-                        isReconciled ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        <Banknote className="w-4 h-4" />
+            {loadingCod ? (
+              <div className="text-center py-6 text-slate-400 text-xs animate-pulse">Loading COD ledger...</div>
+            ) : allTransactions.length === 0 ? (
+              <div className="flex flex-col items-center py-8 text-slate-400 space-y-2">
+                <Inbox className="w-10 h-10 text-slate-300" />
+                <p className="font-bold text-slate-600 text-sm">No COD orders yet</p>
+                <p className="text-xs text-center max-w-xs">When a vendor assigns a COD delivery order to you, it will appear here.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 text-xs">
+                {allTransactions.map(txn => {
+                  const isReconciled = txn.status === 'reconciled_with_platform';
+                  return (
+                    <div
+                      key={txn.id}
+                      className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black shrink-0 ${
+                          isReconciled ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          <Banknote className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-900 truncate">
+                            {txn.customerName} • Order #{txn.orderId}
+                          </p>
+                          <p className="text-[11px] text-slate-500">
+                            {txn.collectedAt} • {txn.paymentMode}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="font-bold text-slate-900 truncate">
-                          {txn.customerName} • Order #{txn.orderId}
-                        </p>
-                        <p className="text-[11px] text-slate-500">
-                          {txn.collectedAt} • {txn.paymentMode}
-                        </p>
-                      </div>
-                    </div>
 
-                    <div className="text-right shrink-0">
-                      <span className="font-black text-slate-900 block text-sm">
-                        ₹{txn.amount}
-                      </span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${
-                        isReconciled 
-                          ? 'bg-emerald-100 text-emerald-800' 
-                          : 'bg-amber-100 text-amber-900 animate-pulse'
-                      }`}>
-                        {isReconciled ? 'Reconciled' : 'Held in Hand'}
-                      </span>
+                      <div className="text-right shrink-0">
+                        <span className="font-black text-slate-900 block text-sm">
+                          ₹{txn.amount.toLocaleString('en-IN')}
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${
+                          isReconciled 
+                            ? 'bg-emerald-100 text-emerald-800' 
+                            : 'bg-amber-100 text-amber-900 animate-pulse'
+                        }`}>
+                          {isReconciled ? 'Reconciled' : 'Held in Hand'}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
         </div>
@@ -395,9 +463,9 @@ export default function DeliveryCodPage() {
 
               <button
                 type="submit"
-                disabled={rider.cashInHand <= 0}
+                disabled={cashInHand <= 0}
                 className={`w-full py-3 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-1.5 shadow-md active:scale-98 ${
-                  rider.cashInHand > 0
+                  cashInHand > 0
                     ? 'bg-[#FFB703] hover:bg-[#E5A015] text-slate-950'
                     : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                 }`}

@@ -16,7 +16,6 @@ import Footer from './components/common/Footer';
 import BottomNav from './components/common/BottomNav';
 import LocationModal from './components/common/LocationModal';
 import AuthModal from './components/common/AuthModal';
-import ChatBotWidget from './components/support/ChatBotWidget';
 import ScrollToTop from './components/common/ScrollToTop';
 
 // Application Routing
@@ -87,9 +86,6 @@ function AppContent() {
 
       {/* Global Authentication Modal */}
       <AuthModal />
-
-      {/* Global Floating AI Support Chatbot */}
-      <ChatBotWidget />
 
       {/* Global Dynamic Toast */}
       <GlobalToast />

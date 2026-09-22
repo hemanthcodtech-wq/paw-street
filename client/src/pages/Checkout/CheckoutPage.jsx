@@ -29,8 +29,24 @@ export default function CheckoutPage() {
   const { placeOrder } = useOrders();
   const { user } = useAuth();
 
+  const getNext5Days = () => {
+    const dates = [];
+    const today = new Date();
+    for (let i = 0; i < 5; i++) {
+      const nextDate = new Date(today);
+      nextDate.setDate(today.getDate() + i);
+      let label = '';
+      if (i === 0) label = 'Today';
+      else if (i === 1) label = 'Tomorrow';
+      else label = nextDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      dates.push(label);
+    }
+    return dates;
+  };
+  const availableDates = getNext5Days();
+
   const [deliverySpeed, setDeliverySpeed] = useState('instant'); // 'instant' | 'scheduled'
-  const [scheduledSlot, setScheduledSlot] = useState('Tomorrow, 10:00 AM - 12:00 PM');
+  const [scheduledSlot, setScheduledSlot] = useState(availableDates[0]);
   const [paymentMethod, setPaymentMethod] = useState('online'); // 'online' | 'cod'
   const [isProcessing, setIsProcessing] = useState(false);
   const [addressError, setAddressError] = useState('');
@@ -406,7 +422,7 @@ export default function CheckoutPage() {
 
               <div
                 onClick={() => setDeliverySpeed('scheduled')}
-                className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-2 ${
+                className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col space-y-3 ${
                   deliverySpeed === 'scheduled'
                     ? 'border-amber-500 bg-amber-50/60 shadow-xs'
                     : 'border-slate-200 hover:border-slate-300'
@@ -418,9 +434,31 @@ export default function CheckoutPage() {
                   </span>
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-slate-900">Scheduled Slot</div>
-                  <p className="text-[11px] text-slate-500">Pick a specific convenient time slot</p>
+                  <div className="text-xs font-bold text-slate-900">Scheduled Delivery</div>
+                  <p className="text-[11px] text-slate-500">Pick a convenient delivery date</p>
                 </div>
+                {deliverySpeed === 'scheduled' && (
+                  <div className="pt-2 border-t border-amber-200/60 flex flex-wrap gap-2">
+                    {availableDates.map(date => (
+                      <button
+                        key={date}
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setScheduledSlot(date);
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          scheduledSlot === date
+                            ? 'bg-amber-500 text-white shadow-xs'
+                            : 'bg-white border border-slate-200 text-slate-600 hover:border-amber-300'
+                        }`}
+                      >
+                        {date}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>

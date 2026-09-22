@@ -125,6 +125,9 @@ export const api = {
 
   // 7. Delivery Partner
   getDeliveryProfile: () => request('/delivery/profile'),
+  getDeliveryOrders: () => request('/delivery/my-orders'),
+  getCodTransactions: () => request('/delivery/cod-transactions'),
+  getDeliveryEarnings: () => request('/delivery/earnings'),
   toggleDeliveryDuty: (onlineStatus) => request('/delivery/duty-toggle', { method: 'PUT', body: JSON.stringify({ onlineStatus }) }),
   reconcileCashDeposit: (body) => request('/delivery/reconcile-deposit', { method: 'POST', body: JSON.stringify(body) }),
 

@@ -18,7 +18,9 @@ import {
   Sparkles,
   Package,
   Layers,
-  Power
+  Power,
+  RefreshCw,
+  Inbox
 } from 'lucide-react';
 import { useDelivery } from '../../context/DeliveryContext';
 
@@ -30,7 +32,9 @@ export default function DeliveryDashboardPage() {
     assignments, 
     activeOrder, 
     acceptOrder, 
-    declineOrder 
+    declineOrder,
+    ordersLoaded,
+    refreshOrders
   } = useDelivery();
 
   const [alertDismissed, setAlertDismissed] = useState(false);
@@ -46,7 +50,7 @@ export default function DeliveryDashboardPage() {
       <div className="bg-slate-900 text-white rounded-3xl p-5 sm:p-6 shadow-lg border border-slate-800 relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1.5 ${
                 rider.onlineStatus 
                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
@@ -55,12 +59,20 @@ export default function DeliveryDashboardPage() {
                 <span className={`w-2 h-2 rounded-full ${rider.onlineStatus ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
                 <span>{rider.onlineStatus ? 'DUTY ACTIVE • RECEIVING ORDERS' : 'SHIFT OFFLINE • NO ORDERS'}</span>
               </span>
-              <span className="text-slate-400 text-xs hidden sm:inline">
-                • {rider.currentZone}
-              </span>
+              {rider.vendorStoreName && (
+                <span className="text-amber-300 text-xs font-bold flex items-center gap-1">
+                  <Store className="w-3.5 h-3.5" />
+                  {rider.vendorStoreName}
+                </span>
+              )}
+              {!rider.vendorStoreName && (
+                <span className="text-slate-400 text-xs hidden sm:inline">
+                  • {rider.currentZone}
+                </span>
+              )}
             </div>
             <h1 className="font-heading font-black text-xl sm:text-2xl lg:text-3xl text-white tracking-tight">
-              Welcome, Captain {rider.name.split(' ')[0]} 🛵
+              Welcome, Captain {(rider.name || 'Rider').split(' ')[0]} 🛵
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
               Stay safe on the road. Always verify pet food packaging seals and collect COD amounts before delivery.
@@ -320,10 +332,43 @@ export default function DeliveryDashboardPage() {
               Assigned pet food, grooming supplies and prescription medicine orders in your zone.
             </p>
           </div>
-          <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-xl">
-            {assignments.length} Total Trips
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={refreshOrders}
+              className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
+              title="Refresh Orders"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-xl">
+              {assignments.length} Total Trips
+            </span>
+          </div>
         </div>
+
+        {/* Empty State */}
+        {assignments.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
+            <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center">
+              <Inbox className="w-8 h-8 text-slate-400" />
+            </div>
+            <div>
+              <p className="font-bold text-slate-700 text-sm">No orders assigned yet</p>
+              <p className="text-xs text-slate-400 mt-1">
+                {rider.vendorStoreName
+                  ? `Waiting for ${rider.vendorStoreName} to assign orders to you`
+                  : 'Stay online and the vendor will assign orders to you soon'}
+              </p>
+            </div>
+            <button
+              onClick={refreshOrders}
+              className="flex items-center gap-2 text-xs font-bold text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-4 py-2 rounded-xl transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Check for new orders</span>
+            </button>
+          </div>
+        )}
 
         <div className="space-y-3">
           {assignments.map(item => {

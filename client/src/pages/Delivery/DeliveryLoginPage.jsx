@@ -64,23 +64,19 @@ export default function DeliveryLoginPage() {
         if (res.user) {
           localStorage.setItem('paw_user', JSON.stringify({ ...res.user, isLoggedIn: true }));
         }
-        setIsAuthenticated(true);
-        setRider({
-          id: res.user?.id || 'RDR-702',
+
+        // Set basic info immediately — DeliveryContext will enrich with real DB profile
+        setRider(prev => ({
+          ...prev,
+          id: res.user?.id || prev.id,
           name: res.user?.name || 'Delivery Captain',
-          phone: res.user?.phone || '+91 98451 22334',
+          phone: res.user?.phone || '',
           email: res.user?.email || email,
-          avatar: res.user?.avatar || '',
-          vehicleNumber: 'TS 09 EQ 4421',
-          vehicleType: 'EV Bike (Ather 450X)',
-          rating: 4.92,
-          totalDeliveries: 412,
-          todayTrips: 8,
-          todayEarnings: 760,
-          onlineStatus: true,
-          cashInHand: 1450,
-          currentZone: 'Jubilee Hills & Banjara Hills, Hyderabad'
-        });
+          avatar: res.user?.avatar || prev.avatar,
+          onlineStatus: true
+        }));
+
+        setIsAuthenticated(true);
         navigate('/delivery/dashboard');
       } else {
         setErrorMessage(res?.message || 'Invalid delivery captain credentials');
@@ -111,23 +107,19 @@ export default function DeliveryLoginPage() {
         if (res.user) {
           localStorage.setItem('paw_user', JSON.stringify({ ...res.user, isLoggedIn: true }));
         }
-        setIsAuthenticated(true);
-        setRider({
-          id: res.user?.id || 'RDR-702',
+
+        // Set basic info — DeliveryContext fetches real DB profile after isAuthenticated = true
+        setRider(prev => ({
+          ...prev,
+          id: res.user?.id || prev.id,
           name: res.user?.name || 'Raju Kumar',
-          phone: res.user?.phone || '+91 98451 22334',
+          phone: res.user?.phone || '',
           email: res.user?.email || 'rider@pawnear.com',
-          avatar: res.user?.avatar || '',
-          vehicleNumber: 'TS 09 EQ 4421',
-          vehicleType: 'EV Bike',
-          rating: 4.9,
-          totalDeliveries: 412,
-          todayTrips: 8,
-          todayEarnings: 760,
-          onlineStatus: true,
-          cashInHand: 1450,
-          currentZone: 'Jubilee Hills, Hyderabad'
-        });
+          avatar: res.user?.avatar || prev.avatar,
+          onlineStatus: true
+        }));
+
+        setIsAuthenticated(true);
         navigate('/delivery/dashboard');
       } else {
         setErrorMessage(res?.message || 'Google sign-in failed');

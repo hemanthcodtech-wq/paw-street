@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
 
 const DeliveryContext = createContext();
@@ -11,191 +11,137 @@ export function useDelivery() {
   return context;
 }
 
+// Static fallback assignments shown when not authenticated / API unreachable
+const DEMO_ASSIGNMENTS = [
+  {
+    id: 'DEL-9901',
+    orderId: 'ORD-8821',
+    status: 'on_the_way_to_customer',
+    paymentType: 'COD',
+    codAmount: 1249,
+    isCodCollected: false,
+    customerOtp: '4821',
+    estimatedPayout: 95,
+    distanceKm: 2.8,
+    durationMins: 9,
+    timestamp: '10:45 AM',
+    store: {
+      id: 'VND-101',
+      name: 'Paws & Whiskers Supermart',
+      address: 'Plot 42, Road No. 12, Banjara Hills',
+      landmark: 'Opposite City Center Mall',
+      phone: '+91 98765 43210',
+      lat: 17.4156,
+      lng: 78.4350,
+      contactPerson: 'Rajesh (Store Manager)'
+    },
+    customer: {
+      name: 'Meera Nambiar',
+      phone: '+91 99881 22345',
+      address: 'Flat 402, Oakwood Heights, Rd 36, Jubilee Hills',
+      landmark: 'Near Peddamma Temple Metro Pillar 18',
+      lat: 17.4319,
+      lng: 78.4073,
+      deliveryInstructions: 'Call upon arrival. Security gate pass pre-approved.'
+    },
+    items: [
+      { name: 'Royal Canin Maxi Adult Dog Food (15kg)', qty: 1, price: 6899, verified: true },
+      { name: 'Natural Rubber Chew Bone Toy', qty: 2, price: 598, verified: true }
+    ],
+    currentRiderPos: { lat: 17.4245, lng: 78.4210, heading: 285 },
+    navigationSteps: [
+      { instruction: 'Head north on Road No. 12 toward Rd No. 10', distance: '400 m', icon: 'straight' },
+      { instruction: 'Turn left onto Jubilee Hills Checkpost Road', distance: '1.2 km', icon: 'turn-left' },
+      { instruction: 'Turn right at Oakwood Heights Gate 1', distance: '400 m', icon: 'turn-right' }
+    ],
+    currentStepIndex: 1
+  }
+];
+
 export function DeliveryProvider({ children }) {
   // ----------------------------------------------------
   // RIDER PROFILE & SHIFT STATE
   // ----------------------------------------------------
   const [rider, setRider] = useState({
-    id: 'RDR-702',
-    name: 'Raju Kumar',
-    phone: '+91 98451 22334',
-    email: 'raju@pawnear.com',
+    id: '',
+    name: 'Delivery Captain',
+    phone: '',
+    email: '',
     avatar: '/images/promo_puppy.jpg',
-    vehicleNumber: 'TS 09 EQ 4421',
-    vehicleType: 'EV Bike (Ather 450X)',
-    rating: 4.92,
-    totalDeliveries: 412,
-    todayTrips: 8,
-    todayEarnings: 760,
-    onlineStatus: true, // true = Available on Duty, false = Offline
-    cashInHand: 1450, // Total COD cash collected today awaiting reconciliation
-    currentZone: 'Jubilee Hills & Banjara Hills, Hyderabad'
+    vehicleNumber: '',
+    vehicleType: 'EV Bike',
+    rating: 4.9,
+    totalDeliveries: 0,
+    todayTrips: 0,
+    todayEarnings: 0,
+    onlineStatus: true,
+    cashInHand: 0,
+    currentZone: 'Hyderabad',
+    vendorStoreName: null, // Store the rider serves
+    vendorStoreId: null
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('paw_rider_token'));
+  const [ordersLoaded, setOrdersLoaded] = useState(false);
+
+  // ----------------------------------------------------
+  // LIVE DELIVERY ASSIGNMENTS
+  // ----------------------------------------------------
+  const [assignments, setAssignments] = useState([]);
 
   // Fetch Live Delivery Profile from Backend
-  const fetchDeliveryData = React.useCallback(async () => {
+  const fetchDeliveryData = useCallback(async () => {
     try {
       if (!localStorage.getItem('paw_rider_token')) return;
       const res = await api.getDeliveryProfile();
       if (res && res.success && res.rider) {
-        setRider(prev => ({ ...prev, ...res.rider, id: res.rider._id || prev.id }));
+        setRider(prev => ({
+          ...prev,
+          ...res.rider,
+          id: res.rider._id || res.rider.id || prev.id,
+          vendorStoreName: res.rider.vendorStoreName || prev.vendorStoreName,
+          vendorStoreId: res.rider.vendorStoreId || prev.vendorStoreId
+        }));
       }
     } catch (err) {
-      console.warn('Live delivery data load notice:', err.message);
+      console.warn('Live delivery profile load notice:', err.message);
+    }
+  }, []);
+
+  // Fetch real assigned orders for this rider
+  const fetchMyOrders = useCallback(async () => {
+    try {
+      if (!localStorage.getItem('paw_rider_token')) return;
+      const res = await api.getDeliveryOrders();
+      if (res && res.success && Array.isArray(res.assignments)) {
+        if (res.assignments.length > 0) {
+          setAssignments(res.assignments);
+        }
+        // If no real orders yet, keep current assignments (could be demo)
+        setOrdersLoaded(true);
+      }
+    } catch (err) {
+      console.warn('Live delivery orders load notice:', err.message);
+      setOrdersLoaded(true);
     }
   }, []);
 
   useEffect(() => {
-    fetchDeliveryData();
-  }, [fetchDeliveryData]);
-
-  // ----------------------------------------------------
-  // 5.1 LIVE DELIVERY ASSIGNMENTS & PIPELINE
-  // ----------------------------------------------------
-  const [assignments, setAssignments] = useState([
-    {
-      id: 'DEL-9901',
-      orderId: 'ORD-8821',
-      status: 'on_the_way_to_customer', // 'assigned', 'accepted', 'arrived_at_store', 'picked_up', 'on_the_way_to_customer', 'arrived_at_doorstep', 'delivered'
-      paymentType: 'COD', // 'COD' or 'PREPAID'
-      codAmount: 1249,
-      isCodCollected: false,
-      customerOtp: '4821',
-      estimatedPayout: 95, // Rider earning for this trip
-      distanceKm: 2.8,
-      durationMins: 9,
-      timestamp: '10:45 AM',
-      // Pickup Store Information
-      store: {
-        id: 'VND-101',
-        name: 'Paws & Whiskers Supermart',
-        address: 'Plot 42, Road No. 12, Banjara Hills',
-        landmark: 'Opposite City Center Mall',
-        phone: '+91 98765 43210',
-        lat: 17.4156,
-        lng: 78.4350,
-        contactPerson: 'Rajesh (Store Manager)'
-      },
-      // Customer Drop-off Information
-      customer: {
-        name: 'Meera Nambiar',
-        phone: '+91 99881 22345',
-        address: 'Flat 402, Oakwood Heights, Rd 36, Jubilee Hills',
-        landmark: 'Near Peddamma Temple Metro Pillar 18',
-        lat: 17.4319,
-        lng: 78.4073,
-        deliveryInstructions: 'Call upon arrival. Security gate pass pre-approved.'
-      },
-      // Items manifest checklist
-      items: [
-        { name: 'Royal Canin Maxi Adult Dog Food (15kg)', qty: 1, price: 6899, verified: true },
-        { name: 'Natural Rubber Chew Bone Toy', qty: 2, price: 598, verified: true }
-      ],
-      // Simulated live route coordinates (Store -> Customer)
-      currentRiderPos: {
-        lat: 17.4245,
-        lng: 78.4210,
-        heading: 285
-      },
-      // Real-time navigation step instructions
-      navigationSteps: [
-        { instruction: 'Head north on Road No. 12 toward Rd No. 10', distance: '400 m', icon: 'straight' },
-        { instruction: 'Turn left onto Jubilee Hills Checkpost Road', distance: '1.2 km', icon: 'turn-left' },
-        { instruction: 'Continue straight past Metro Pillar 14', distance: '800 m', icon: 'straight' },
-        { instruction: 'Turn right at Oakwood Heights Gate 1', distance: '400 m', icon: 'turn-right' }
-      ],
-      currentStepIndex: 1
-    },
-    {
-      id: 'DEL-9902',
-      orderId: 'ORD-8824',
-      status: 'assigned', // New pending assignment
-      paymentType: 'PREPAID',
-      codAmount: 0,
-      isCodCollected: true,
-      customerOtp: '9133',
-      estimatedPayout: 80,
-      distanceKm: 3.4,
-      durationMins: 12,
-      timestamp: '11:15 AM',
-      store: {
-        id: 'VND-103',
-        name: 'CityCare Animal Hospital & Pharmacy',
-        address: 'Shop 14, High Street, Jubilee Hills',
-        landmark: 'Next to Apollo Diagnostics',
-        phone: '+91 99445 67890',
-        lat: 17.4319,
-        lng: 78.4073,
-        contactPerson: 'Dr. Arjun Varma'
-      },
-      customer: {
-        name: 'Kavita Reddy',
-        phone: '+91 98760 11223',
-        address: 'Villa 12, Silver Oaks Enclave, Madhapur',
-        landmark: 'Near Inorbit Mall Backgate',
-        lat: 17.4399,
-        lng: 78.3842,
-        deliveryInstructions: 'Leave package with security if no answer.'
-      },
-      items: [
-        { name: 'Pet Derma Medicated Anti-Tick Shampoo (250ml)', qty: 1, price: 449, verified: false },
-        { name: 'Calcium & Bone Strength Tablets (60 tabs)', qty: 1, price: 399, verified: false }
-      ],
-      currentRiderPos: {
-        lat: 17.4300,
-        lng: 78.4100,
-        heading: 45
-      },
-      navigationSteps: [
-        { instruction: 'Head west on High Street toward CityCare Clinic', distance: '300 m', icon: 'straight' }
-      ],
-      currentStepIndex: 0
+    if (isAuthenticated) {
+      fetchDeliveryData();
+      fetchMyOrders();
     }
-  ]);
+  }, [isAuthenticated, fetchDeliveryData, fetchMyOrders]);
 
   // Active primary order being navigated
-  const activeOrder = assignments.find(a => 
+  const activeOrder = assignments.find(a =>
     ['accepted', 'arrived_at_store', 'picked_up', 'on_the_way_to_customer', 'arrived_at_doorstep'].includes(a.status)
   ) || null;
 
   // ----------------------------------------------------
-  // 5.2 CASH-ON-DELIVERY (COD) TRANSACTION LEDGER
+  // CASH-ON-DELIVERY (COD) TRANSACTION LEDGER
   // ----------------------------------------------------
-  const [codTransactions, setCodTransactions] = useState([
-    {
-      id: 'TXN-COD-01',
-      orderId: 'ORD-8815',
-      deliveryId: 'DEL-9890',
-      customerName: 'Aditya Sen',
-      amount: 850,
-      collectedAt: 'Today at 09:30 AM',
-      paymentMode: 'Cash Collected',
-      status: 'held_by_rider' // 'held_by_rider', 'reconciled_with_platform'
-    },
-    {
-      id: 'TXN-COD-02',
-      orderId: 'ORD-8817',
-      deliveryId: 'DEL-9892',
-      customerName: 'Sunita Rao',
-      amount: 600,
-      collectedAt: 'Today at 10:10 AM',
-      paymentMode: 'Cash Collected',
-      status: 'held_by_rider'
-    },
-    {
-      id: 'TXN-COD-03',
-      orderId: 'ORD-8799',
-      deliveryId: 'DEL-9870',
-      customerName: 'Vikram Mehta',
-      amount: 1450,
-      collectedAt: 'Yesterday at 07:45 PM',
-      paymentMode: 'Deposited to Platform UPI',
-      status: 'reconciled_with_platform',
-      referenceId: 'UPI-REF-99214481'
-    }
-  ]);
+  const [codTransactions, setCodTransactions] = useState([]);
 
   // ----------------------------------------------------
   // MUTATION ACTIONS
@@ -330,6 +276,11 @@ export function DeliveryProvider({ children }) {
     });
   };
 
+  // 7. Refresh orders from backend
+  const refreshOrders = () => {
+    fetchMyOrders();
+  };
+
   return (
     <DeliveryContext.Provider
       value={{
@@ -338,7 +289,9 @@ export function DeliveryProvider({ children }) {
         isAuthenticated,
         setIsAuthenticated,
         assignments,
+        setAssignments,
         activeOrder,
+        ordersLoaded,
         codTransactions,
         toggleOnlineStatus,
         acceptOrder,
@@ -346,7 +299,9 @@ export function DeliveryProvider({ children }) {
         updateDeliveryStatus,
         toggleItemVerified,
         collectCodPayment,
-        reconcileCashDeposit
+        reconcileCashDeposit,
+        refreshOrders,
+        DEMO_ASSIGNMENTS
       }}
     >
       {children}
