@@ -122,7 +122,7 @@ export default function HomePage() {
       )}
 
       {activeHeroBanners.length > 0 && (
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+        <section className="hidden md:grid md:grid-cols-3 gap-3 sm:gap-4">
           {activeHeroBanners.slice(0, 3).map((banner) => (
             <Link
               key={banner.id}
