@@ -3,6 +3,7 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const Vendor = require('../models/Vendor');
 const { protect } = require('../middleware/authMiddleware');
 const { sendOrderConfirmationEmail } = require('../config/email');
 
@@ -146,7 +147,13 @@ router.post('/', protect, async (req, res) => {
         pincode: '500033'
       },
       pricing: pricing || { subtotal: 999, deliveryFee: 49, total: 1048 },
-      payment: payment || { method: 'RAZORPAY_ONLINE', status: 'paid' },
+      payment: {
+        method: payment?.method || 'RAZORPAY_ONLINE',
+        status: payment?.status || 'pending',
+        razorpayOrderId: payment?.razorpayOrderId || '',
+        razorpayPaymentId: payment?.razorpayPaymentId || '',
+        razorpaySignature: payment?.razorpaySignature || ''
+      },
       status: 'placed',
       vendor: firstVendorItem ? firstVendorItem.vendorId : undefined,
       appointment: {
@@ -163,6 +170,25 @@ router.post('/', protect, async (req, res) => {
         { status: 'confirmed', notes: 'Store accepted and packaging order.' }
       ]
     });
+
+    const vendorId = order.vendor?.toString() || normalizedItems.find(item => item.vendorId)?.vendorId;
+    const vendor = vendorId && isMongoObjectId(vendorId) ? await Vendor.findById(vendorId).select('commissionRate') : null;
+    const vendorItems = normalizedItems.filter(item => !vendorId || !item.vendorId || item.vendorId.toString() === vendorId);
+    const vendorGrossAmount = vendorItems.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0) || Number(order.pricing?.subtotal || 0);
+    const commissionRate = vendorId
+      ? Number(vendor?.commissionRate ?? 12)
+      : 0;
+    const platformCommission = Math.round((vendorGrossAmount * commissionRate) / 100);
+    order.settlement = {
+      ...order.settlement.toObject(),
+      vendorGrossAmount,
+      platformCommission,
+      vendorNetAmount: Math.max(0, vendorGrossAmount - platformCommission),
+      commissionRate,
+      riderPayoutAmount: Math.round(Number(order.pricing?.deliveryFee || 0) * 0.6),
+      riderPayoutRate: 0.6
+    };
+    await order.save();
 
     // Send confirmation email asynchronously
     if (customerEmail) {
@@ -217,7 +243,7 @@ router.get('/', protect, async (req, res) => {
 
 // @route   PUT /api/orders/:id/status
 // @desc    Update live order pipeline status
-router.put('/:id/status', async (req, res) => {
+router.put('/:id/status', protect, async (req, res) => {
   try {
     const { status, notes } = req.body;
     const idQuery = isMongoObjectId(req.params.id)

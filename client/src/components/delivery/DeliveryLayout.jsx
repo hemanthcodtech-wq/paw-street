@@ -5,7 +5,6 @@ import {
   MapPin, 
   Navigation, 
   Banknote, 
-  TrendingUp, 
   Power, 
   Menu, 
   X, 
@@ -65,13 +64,6 @@ export default function DeliveryLayout({ children }) {
       badge: rider.cashInHand > 0 ? `₹${rider.cashInHand}` : null,
       badgeColor: 'bg-amber-100 text-amber-900 border border-amber-300 font-black'
     },
-    {
-      name: 'Daily Trips & Earnings',
-      shortName: 'Earnings',
-      path: '/delivery/earnings',
-      icon: TrendingUp,
-      badge: null
-    }
   ];
 
   return (
@@ -270,10 +262,6 @@ export default function DeliveryLayout({ children }) {
               <div className="flex justify-between text-slate-700 text-[11px]">
                 <span>Completed Trips:</span>
                 <strong className="text-slate-900">{rider.todayTrips} Orders</strong>
-              </div>
-              <div className="flex justify-between text-slate-700 text-[11px]">
-                <span>Today's Earnings:</span>
-                <strong className="text-emerald-700 font-bold">₹{rider.todayEarnings}</strong>
               </div>
               <div className="flex justify-between text-slate-700 text-[11px]">
                 <span>COD Cash in Hand:</span>

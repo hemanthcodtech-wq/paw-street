@@ -544,6 +544,8 @@ export function VendorProvider({ children }) {
 
   // Data Fetching from Backend (Strictly Scoped to Authenticated Vendor via JWT)
   const fetchVendorData = React.useCallback(async () => {
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/vendor')) return;
+
     const vendorToken = localStorage.getItem('paw_vendor_token');
     let userRole = null;
     try {

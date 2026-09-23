@@ -11,6 +11,7 @@ export default function AdminRevenuePage() {
     revenueMetrics, 
     payoutQueue,
     paymentHistory,
+    riderEarnings,
     processPayout
   } = useAdmin();
 
@@ -60,7 +61,7 @@ export default function AdminRevenuePage() {
             ₹{revenueMetrics.totalVendorPayoutsDisbursed.toLocaleString('en-IN')}
           </p>
           <p className="text-[11px] text-slate-400">
-            Reconciled via automated bank settlement transfers
+            COD and online orders are paid after commission deduction
           </p>
         </div>
 
@@ -77,6 +78,38 @@ export default function AdminRevenuePage() {
           <p className="text-[11px] text-slate-400">
             Scheduled for this week's settlement cycle
           </p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-4">
+        <div>
+          <h3 className="font-heading font-black text-base text-slate-900">Rider Earnings Reconciliation</h3>
+          <p className="text-xs text-slate-500">Delivery payouts calculated from completed orders and stored settlement records.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 text-slate-400 text-[11px] font-bold">
+                <th className="py-2.5 px-3">RIDER</th>
+                <th className="py-2.5 px-3">PHONE</th>
+                <th className="py-2.5 px-3">COMPLETED TRIPS</th>
+                <th className="py-2.5 px-3">TOTAL EARNINGS</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {(riderEarnings || []).map((rider) => (
+                <tr key={rider.riderId}>
+                  <td className="py-3 px-3 font-bold text-slate-800">{rider.riderName}</td>
+                  <td className="py-3 px-3 text-slate-500">{rider.riderPhone || '-'}</td>
+                  <td className="py-3 px-3 font-semibold text-slate-700">{rider.tripsCount}</td>
+                  <td className="py-3 px-3 font-black text-emerald-600">₹{Number(rider.totalEarnings || 0).toLocaleString('en-IN')}</td>
+                </tr>
+              ))}
+              {(!riderEarnings || riderEarnings.length === 0) && (
+                <tr><td colSpan={4} className="py-6 text-center text-slate-400 font-bold">No completed rider payouts yet.</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -155,7 +188,7 @@ export default function AdminRevenuePage() {
               Order Payment History & Vendor Earnings
             </h3>
             <p className="text-xs text-slate-500">
-              Full paid-order ledger with customer payment, commission, vendor net amount, and payout status.
+              Vendor payout = vendor gross amount minus platform commission. Delivery fees remain separate.
             </p>
           </div>
           <span className="text-xs font-bold bg-slate-100 text-slate-700 px-3 py-1 rounded-xl shrink-0 self-start sm:self-center">
@@ -171,6 +204,7 @@ export default function AdminRevenuePage() {
                 <th className="py-2.5 px-3">CUSTOMER</th>
                 <th className="py-2.5 px-3">VENDOR</th>
                 <th className="py-2.5 px-3">PAYMENT</th>
+                <th className="py-2.5 px-3">COD VALUE</th>
                 <th className="py-2.5 px-3">GROSS</th>
                 <th className="py-2.5 px-3">COMMISSION</th>
                 <th className="py-2.5 px-3">VENDOR NET</th>
@@ -189,6 +223,14 @@ export default function AdminRevenuePage() {
                   <td className="py-3 px-3">
                     <span className="font-bold text-slate-700 block">{payment.paymentMethod}</span>
                     <span className="text-[10px] text-emerald-600 font-bold">{payment.paymentStatus}</span>
+                  </td>
+                  <td className="py-3 px-3 font-semibold text-slate-700">
+                    <span className="block">₹{Number(payment.customerAmount || 0).toLocaleString('en-IN')}</span>
+                    {payment.paymentMethod === 'COD' && (
+                      <span className={`text-[10px] font-bold ${payment.codCollected ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {payment.codCollected ? `Collected ₹${Number(payment.codCollectedAmount || 0).toLocaleString('en-IN')}` : 'Awaiting collection'}
+                      </span>
+                    )}
                   </td>
                   <td className="py-3 px-3 font-black text-slate-900">₹{Number(payment.grossAmount || 0).toLocaleString('en-IN')}</td>
                   <td className="py-3 px-3 text-rose-600 font-bold">
@@ -209,7 +251,7 @@ export default function AdminRevenuePage() {
               ))}
               {(!paymentHistory || paymentHistory.length === 0) && (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400 font-bold">
+                  <td colSpan={9} className="py-8 text-center text-slate-400 font-bold">
                     No paid order records yet.
                   </td>
                 </tr>

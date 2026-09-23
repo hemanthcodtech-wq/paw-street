@@ -403,7 +403,6 @@ export default function DeliveryLiveMapPage() {
             <div className="bg-emerald-50 border border-emerald-300 p-4 rounded-2xl text-center space-y-2">
               <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
               <h3 className="font-bold text-slate-900 text-sm">Delivery Completed Successfully! 🎉</h3>
-              <p className="text-xs text-slate-500">Trip earnings of ₹{currentOrder.estimatedPayout} added to your shift wallet.</p>
               <Link
                 to="/delivery/dashboard"
                 className="inline-flex items-center gap-2 px-5 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl mt-1"

@@ -5,9 +5,10 @@ import { api } from '../services/api';
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
-  const { user, setIsAuthModalOpen } = useAuth();
+  const { user } = useAuth();
 
   const [items, setItems] = useState(() => {
+    if (!user || !user.isLoggedIn) return [];
     const saved = localStorage.getItem('paw_cart');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { /* ignore */ }
@@ -16,6 +17,7 @@ export function CartProvider({ children }) {
   });
 
   const [wishlist, setWishlist] = useState(() => {
+    if (!user || !user.isLoggedIn) return [];
     const saved = localStorage.getItem('paw_wishlist');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { /* ignore */ }
@@ -29,13 +31,21 @@ export function CartProvider({ children }) {
 
   // Sync cart with localStorage
   useEffect(() => {
+    if (!user || !user.isLoggedIn) {
+      localStorage.removeItem('paw_cart');
+      return;
+    }
     localStorage.setItem('paw_cart', JSON.stringify(items));
-  }, [items]);
+  }, [items, user]);
 
   // Sync wishlist with localStorage
   useEffect(() => {
+    if (!user || !user.isLoggedIn) {
+      localStorage.removeItem('paw_wishlist');
+      return;
+    }
     localStorage.setItem('paw_wishlist', JSON.stringify(wishlist));
-  }, [wishlist]);
+  }, [wishlist, user]);
 
   useEffect(() => {
     let ignore = false;
@@ -55,10 +65,9 @@ export function CartProvider({ children }) {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const requireAuth = (actionName = 'perform this action') => {
+  const requireAuth = () => {
     if (!user || !user.isLoggedIn) {
-      showToast(`🔒 Please sign in to ${actionName}!`);
-      setIsAuthModalOpen(true);
+      window.location.assign('/login');
       return false;
     }
     return true;

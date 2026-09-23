@@ -175,23 +175,6 @@ export default function DeliveryDashboardPage() {
           </div>
         </div>
 
-        {/* Today's Total Earnings */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xs space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500">Trip Earnings</span>
-            <span className="p-1.5 bg-amber-50 text-amber-600 rounded-xl">
-              <TrendingUp className="w-4 h-4" />
-            </span>
-          </div>
-          <p className="text-xl sm:text-2xl font-black text-amber-600">
-            ₹{rider.todayEarnings.toLocaleString('en-IN')}
-          </p>
-          <div className="flex items-center gap-1 text-[11px] font-bold text-amber-800">
-            <span>₹95/trip</span>
-            <span className="text-slate-400 font-normal">avg payout</span>
-          </div>
-        </div>
-
         {/* Cash on Delivery in Hand */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xs space-y-2">
           <div className="flex items-center justify-between">

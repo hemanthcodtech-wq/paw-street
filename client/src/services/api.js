@@ -121,7 +121,7 @@ export const api = {
   // 6. Payments & Razorpay
   createRazorpayOrder: (amount, receipt) => request('/payments/razorpay/create-order', { method: 'POST', body: JSON.stringify({ amount, receipt }) }),
   verifyRazorpayPayment: (body) => request('/payments/razorpay/verify-payment', { method: 'POST', body: JSON.stringify(body) }),
-  collectCodPayment: (orderId, amountCollected) => request('/payments/cod/collect', { method: 'POST', body: JSON.stringify({ orderId, amountCollected }) }),
+  collectCodPayment: (orderId, amountCollected, paymentMethod = 'Cash') => request('/payments/cod/collect', { method: 'POST', body: JSON.stringify({ orderId, amountCollected, paymentMethod }) }),
 
   // 7. Delivery Partner
   getDeliveryProfile: () => request('/delivery/profile'),

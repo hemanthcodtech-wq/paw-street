@@ -187,6 +187,7 @@ export function AdminProvider({ children }) {
     }
   ]);
   const [paymentHistory, setPaymentHistory] = useState([]);
+  const [riderEarnings, setRiderEarnings] = useState([]);
 
   // ----------------------------------------------------
   // 3.3 PLATFORM CONTROL & DYNAMIC CMS STATE & DATA
@@ -406,6 +407,9 @@ export function AdminProvider({ children }) {
         }
         if (Array.isArray(financeRes.paymentHistory)) {
           setPaymentHistory(financeRes.paymentHistory);
+        }
+        if (Array.isArray(financeRes.riderEarnings)) {
+          setRiderEarnings(financeRes.riderEarnings);
         }
         if (financeRes.metrics) {
           setRevenueMetrics(prev => ({ ...prev, ...financeRes.metrics }));
@@ -628,6 +632,7 @@ export function AdminProvider({ children }) {
       if (res?.success) {
         if (Array.isArray(res.payoutQueue)) setPayoutQueue(res.payoutQueue);
         if (Array.isArray(res.paymentHistory)) setPaymentHistory(res.paymentHistory);
+        if (Array.isArray(res.riderEarnings)) setRiderEarnings(res.riderEarnings);
         if (res.metrics) setRevenueMetrics(prev => ({ ...prev, ...res.metrics }));
       }
     } catch (err) {
@@ -774,6 +779,7 @@ export function AdminProvider({ children }) {
         updateOnboardingFees,
         payoutQueue,
         paymentHistory,
+        riderEarnings,
         processPayout,
         // 3.3 Platform CMS
         platformContent,

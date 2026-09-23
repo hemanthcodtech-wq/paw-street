@@ -147,10 +147,10 @@ export function OrderProvider({ children }) {
       },
       payment: {
         method: orderData.paymentMethod === 'Cash on Delivery' ? 'COD' : 'RAZORPAY_ONLINE',
-        status: orderData.paymentMethod === 'Cash on Delivery' ? 'pending' : (orderData.paymentStatus || 'paid'),
-        razorpayOrderId: orderData.razorpayOrderId || '',
-        razorpayPaymentId: orderData.razorpayPaymentId || '',
-        razorpaySignature: orderData.razorpaySignature || ''
+        status: orderData.paymentMethod === 'Cash on Delivery' ? 'pending' : (orderData.paymentStatus || (orderData.paymentDetails?.razorpay_payment_id ? 'paid' : 'pending')),
+        razorpayOrderId: orderData.razorpayOrderId || orderData.paymentDetails?.razorpay_order_id || '',
+        razorpayPaymentId: orderData.razorpayPaymentId || orderData.paymentDetails?.razorpay_payment_id || '',
+        razorpaySignature: orderData.razorpaySignature || orderData.paymentDetails?.razorpay_signature || ''
       },
       appointment: {
         mode: appointment.mode || (hasService ? 'home_service' : 'product_delivery'),

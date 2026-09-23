@@ -69,7 +69,13 @@ export default function BookingModal({ salon, isOpen, onClose }) {
   const [createdBooking, setCreatedBooking] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  if (!isOpen || !salon) return null;
+  useEffect(() => {
+    if (isOpen && (!user || !user.isLoggedIn)) {
+      window.location.assign('/login');
+    }
+  }, [isOpen, user]);
+
+  if (!isOpen || !salon || !user || !user.isLoggedIn) return null;
 
   const dates = initialDates;
 

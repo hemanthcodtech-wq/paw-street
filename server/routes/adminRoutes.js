@@ -97,14 +97,31 @@ async function buildFinanceLedger() {
     Vendor.find(),
     Order.find({ 'payment.status': 'paid', status: { $ne: 'cancelled' } })
       .populate('user', 'name email phone')
+      .populate('assignedRider', 'name phone email')
       .sort({ createdAt: -1 })
   ]);
 
   const vendorMap = new Map(vendors.map(v => [v._id.toString(), v]));
   const ledgerMap = new Map();
   const paymentHistory = [];
+  const riderMap = new Map();
 
   orders.forEach(order => {
+    if (order.status === 'delivered' && order.assignedRider) {
+      const riderId = order.assignedRider._id.toString();
+      const riderPayout = Number(order.settlement?.riderPayoutAmount || Math.round((order.pricing?.deliveryFee || 49) * 0.6));
+      const riderEntry = riderMap.get(riderId) || {
+        riderId,
+        riderName: order.assignedRider.name || 'Delivery Partner',
+        riderPhone: order.assignedRider.phone || '',
+        tripsCount: 0,
+        totalEarnings: 0
+      };
+      riderEntry.tripsCount += 1;
+      riderEntry.totalEarnings += riderPayout;
+      riderMap.set(riderId, riderEntry);
+    }
+
     const vendorIds = getOrderVendorIds(order);
     if (vendorIds.length === 0) {
       const grossAmount = Number(order.pricing?.subtotal || order.pricing?.total || 0);
@@ -117,11 +134,15 @@ async function buildFinanceLedger() {
         customerPhone: order.customerPhone || order.user?.phone || '',
         paymentMethod: order.payment?.method || '',
         paymentStatus: order.payment?.status || '',
+        customerAmount: Number(order.pricing?.total || 0),
+        codCollectedAmount: Number(order.payment?.codTenderedAmount || 0),
+        codCollected: order.payment?.isCodCollected === true,
         razorpayPaymentId: order.payment?.razorpayPaymentId || '',
         grossAmount,
         commissionRate: 0,
         platformCommission: 0,
         vendorNetAmount: grossAmount,
+        riderPayoutAmount: Number(order.settlement?.riderPayoutAmount || 0),
         settlementStatus: 'processed',
         payoutReference: '',
         paidAt: order.createdAt,
@@ -136,10 +157,19 @@ async function buildFinanceLedger() {
       const vendor = vendorMap.get(vendorId);
       if (!vendor) return;
 
-      const grossAmount = calculateVendorOrderGross(order, vendorId);
-      const commissionRate = Number(vendor.commissionRate || order.settlement?.commissionRate || 12);
-      const platformCommission = Math.round((grossAmount * commissionRate) / 100);
-      const vendorNetAmount = Math.max(0, grossAmount - platformCommission);
+      const hasSingleVendorSettlement = vendorIds.length === 1 && order.settlement?.vendorGrossAmount > 0;
+      const grossAmount = hasSingleVendorSettlement
+        ? Number(order.settlement.vendorGrossAmount)
+        : calculateVendorOrderGross(order, vendorId);
+      const commissionRate = hasSingleVendorSettlement
+        ? Number(order.settlement.commissionRate || vendor.commissionRate || 12)
+        : Number(vendor.commissionRate || 12);
+      const platformCommission = hasSingleVendorSettlement
+        ? Number(order.settlement.platformCommission || Math.round((grossAmount * commissionRate) / 100))
+        : Math.round((grossAmount * commissionRate) / 100);
+      const vendorNetAmount = hasSingleVendorSettlement
+        ? Number(order.settlement.vendorNetAmount || Math.max(0, grossAmount - platformCommission))
+        : Math.max(0, grossAmount - platformCommission);
       const settlementStatus = order.settlement?.status || 'pending';
 
       if (!ledgerMap.has(vendorId)) {
@@ -177,11 +207,15 @@ async function buildFinanceLedger() {
         customerPhone: order.customerPhone || order.user?.phone || '',
         paymentMethod: order.payment?.method || '',
         paymentStatus: order.payment?.status || '',
+        customerAmount: Number(order.pricing?.total || 0),
+        codCollectedAmount: Number(order.payment?.codTenderedAmount || 0),
+        codCollected: order.payment?.isCodCollected === true,
         razorpayPaymentId: order.payment?.razorpayPaymentId || '',
         grossAmount,
         commissionRate,
         platformCommission,
         vendorNetAmount,
+        riderPayoutAmount: Number(order.settlement?.riderPayoutAmount || 0),
         settlementStatus,
         payoutReference: order.settlement?.payoutReference || '',
         paidAt: order.settlement?.paidAt || null,
@@ -207,17 +241,21 @@ async function buildFinanceLedger() {
     .reduce((sum, p) => sum + p.vendorNetAmount, 0);
   const totalNetPlatformProfit = paymentHistory.reduce((sum, p) => sum + p.platformCommission, 0);
   const totalGmv = paymentHistory.reduce((sum, p) => sum + p.grossAmount, 0);
+  const riderEarnings = Array.from(riderMap.values()).sort((a, b) => b.totalEarnings - a.totalEarnings);
 
   return {
     payoutQueue,
     paymentHistory,
+    riderEarnings,
     metrics: {
       totalGmv,
       totalNetPlatformProfit,
       totalVendorPayoutsDisbursed,
       pendingPayoutsQueue,
       totalOrdersCount: orders.length,
-      averageOrderValue: orders.length ? Math.round((totalGmv / orders.length) * 10) / 10 : 0
+      averageOrderValue: orders.length ? Math.round((totalGmv / orders.length) * 10) / 10 : 0,
+      totalRiderEarnings: riderEarnings.reduce((sum, rider) => sum + rider.totalEarnings, 0),
+      totalRiderTrips: riderEarnings.reduce((sum, rider) => sum + rider.tripsCount, 0)
     }
   };
 }
@@ -266,14 +304,14 @@ router.post('/payouts/:vendorId/process', async (req, res) => {
       ]
     });
 
-    const commissionRate = Number(req.body.commissionRate || vendor.commissionRate || 12);
+    const commissionRate = Number(req.body.commissionRate ?? vendor.commissionRate ?? 12);
     const payoutReference = req.body.payoutReference || `PAYOUT-${Date.now()}`;
     let grossAmount = 0;
     let platformCommission = 0;
     let vendorNetAmount = 0;
 
     for (const order of orders) {
-      const orderGross = calculateVendorOrderGross(order, vendor._id.toString());
+      const orderGross = Number(order.settlement?.vendorGrossAmount || calculateVendorOrderGross(order, vendor._id.toString()));
       const orderCommission = Math.round((orderGross * commissionRate) / 100);
       const orderNet = Math.max(0, orderGross - orderCommission);
 

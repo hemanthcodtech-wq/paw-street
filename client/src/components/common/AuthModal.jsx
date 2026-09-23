@@ -150,8 +150,8 @@ export default function AuthModal() {
                     </label>
                     <input
                       type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      value={emailAddress}
+                      onChange={(e) => setEmailAddress(e.target.value)}
                       placeholder="alex.pawlover@gmail.com"
                       className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none bg-slate-50"
                       required
@@ -201,7 +201,7 @@ export default function AuthModal() {
                 </div>
                 <h4 className="font-bold text-slate-900 text-sm">Enter 4-Digit Security Code</h4>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Code sent to <span className="font-bold text-slate-700">{authMethod === 'phone' ? `+91 ${phoneNumber}` : email}</span>
+                  Code sent to <span className="font-bold text-slate-700">{authMethod === 'phone' ? `+91 ${phoneNumber}` : emailAddress}</span>
                 </p>
                 <button
                   type="button"

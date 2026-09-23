@@ -379,8 +379,8 @@ router.get('/dashboard-stats', protect, authorizeRoles('vendor', 'admin'), async
     const activeOrders = orders.filter(o => !['delivered', 'cancelled'].includes(o.status));
     const today = new Date().toDateString();
     const todayRevenue = orders
-      .filter(o => o.status !== 'cancelled' && new Date(o.createdAt).toDateString() === today)
-      .reduce((sum, o) => sum + (o.pricing?.total || 0), 0);
+      .filter(o => o.payment?.status === 'paid' && o.status !== 'cancelled' && new Date(o.createdAt).toDateString() === today)
+      .reduce((sum, o) => sum + Number(o.settlement?.vendorNetAmount || 0), 0);
 
     res.json({
       success: true,

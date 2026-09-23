@@ -79,11 +79,12 @@ export default function DeliveryCodPage() {
   const changeToReturn = Math.max(0, (parseFloat(tenderedCash) || 0) - orderAmount);
 
   // Handle Collecting COD Payment
-  const handleCollectPayment = (e) => {
+  const handleCollectPayment = async (e) => {
     e.preventDefault();
     if (!selectedCodOrder) return;
 
-    collectCodPayment(selectedCodOrder.id, orderAmount, paymentMode);
+    const collected = await collectCodPayment(selectedCodOrder.id, orderAmount, paymentMode);
+    if (!collected) return;
     updateDeliveryStatus(selectedCodOrder.id, 'delivered');
     setCollectionSuccess(true);
     setTimeout(() => {

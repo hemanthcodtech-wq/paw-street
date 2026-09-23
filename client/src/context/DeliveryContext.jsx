@@ -209,12 +209,13 @@ export function DeliveryProvider({ children }) {
   // 5. Collect COD Payment (Mandatory before marking delivered)
   const collectCodPayment = async (deliveryId, receivedAmount, paymentMode = 'Cash') => {
     const order = assignments.find(a => a.id === deliveryId);
-    if (!order) return;
+    if (!order) return false;
 
     try {
-      api.collectCodPayment(order.orderId, receivedAmount).catch(e => console.log('COD collected locally'));
+      const response = await api.collectCodPayment(order.orderId, receivedAmount, paymentMode);
+      if (!response?.success) return false;
     } catch (err) {
-      // offline fallback
+      return false;
     }
 
     setAssignments(prev => prev.map(a => {
@@ -241,6 +242,7 @@ export function DeliveryProvider({ children }) {
     };
 
     setCodTransactions(prev => [newTxn, ...prev]);
+    return true;
   };
 
   // 6. Deposit and Reconcile Cash with Platform

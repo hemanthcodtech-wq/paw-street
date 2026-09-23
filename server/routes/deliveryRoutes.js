@@ -145,7 +145,7 @@ router.get('/my-orders', protect, authorizeRoles('delivery', 'admin'), async (re
         codAmount: isCod ? (o.pricing?.total || 0) : 0,
         isCodCollected: o.payment?.isCodCollected || false,
         customerOtp: o.deliveryOtp || '4821',
-        estimatedPayout: Math.round((o.pricing?.deliveryFee || 49) * 0.6), // 60% of delivery fee
+        estimatedPayout: Number(o.settlement?.riderPayoutAmount || Math.round((o.pricing?.deliveryFee || 49) * 0.6)),
         distanceKm: 2.5, // placeholder; real GPS distance to be computed client-side
         durationMins: 10,
         timestamp: new Date(o.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
@@ -248,7 +248,7 @@ router.get('/cod-transactions', protect, authorizeRoles('delivery', 'admin'), as
       : [];
 
     const transactions = rawOrders.map((o, idx) => {
-      const isCodCollected = o.payment?.isCodCollected || o.status === 'delivered';
+      const isCodCollected = o.payment?.isCodCollected === true;
       return {
         id: `TXN-COD-${o._id.toString().slice(-6).toUpperCase()}`,
         orderId: o.orderId || o._id.toString(),
@@ -266,7 +266,9 @@ router.get('/cod-transactions', protect, authorizeRoles('delivery', 'admin'), as
     res.json({
       success: true,
       cashInHand: rider.cashInHand || 0,
-      totalCollected: transactions.reduce((s, t) => s + (t.status === 'reconciled_with_platform' ? 0 : t.amount), 0),
+      totalHeld: transactions.reduce((s, t) => s + (t.status === 'held_by_rider' ? t.amount : 0), 0),
+      totalReconciled: transactions.reduce((s, t) => s + (t.status === 'reconciled_with_platform' ? t.amount : 0), 0),
+      totalCollected: transactions.reduce((s, t) => s + t.amount, 0),
       transactions
     });
   } catch (error) {
@@ -298,20 +300,17 @@ router.get('/earnings', protect, authorizeRoles('delivery', 'admin'), async (req
         }).sort({ updatedAt: -1 }).limit(500)
       : [];
 
-    const PER_DELIVERY_BASE = 49; // Base payout per delivery (60% of ₹49 delivery fee or flat)
-    const PER_KM = 12;
-
     const calcStats = (orders) => {
       const count = orders.length;
-      const basePay = count * PER_DELIVERY_BASE;
-      const distanceSurge = count * PER_KM * 2.5; // avg 2.5km surge
-      const tips = Math.round(basePay * 0.1);
-      const targetIncentive = count >= 10 ? 250 : count >= 8 ? 150 : 0;
+      const basePay = orders.reduce((sum, order) => sum + Number(order.settlement?.riderPayoutAmount || Math.round((order.pricing?.deliveryFee || 49) * 0.6)), 0);
+      const distanceSurge = 0;
+      const tips = 0;
+      const targetIncentive = 0;
       return {
-        total: basePay + distanceSurge + tips + targetIncentive,
+        total: basePay,
         tripsCount: count,
-        basePay: Math.round(basePay),
-        distanceSurge: Math.round(distanceSurge),
+        basePay,
+        distanceSurge,
         tips,
         targetIncentive
       };

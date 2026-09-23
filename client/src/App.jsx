@@ -3,6 +3,7 @@ import { BrowserRouter, useLocation } from 'react-router-dom';
 
 // Global Context Providers
 import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './context/AuthContext';
 import { LocationProvider } from './context/LocationContext';
 import { CartProvider, useCart } from './context/CartContext';
 import { OrderProvider } from './context/OrderContext';
@@ -32,6 +33,11 @@ function GlobalToast() {
       <span>{toastMessage}</span>
     </div>
   );
+}
+
+function AuthenticatedCartProvider({ children }) {
+  const { user } = useAuth();
+  return <CartProvider key={user?.id || 'guest'}>{children}</CartProvider>;
 }
 
 // Inner Content with Route Awareness
@@ -102,7 +108,7 @@ export default function App() {
 
       <AuthProvider>
         <LocationProvider>
-          <CartProvider>
+          <AuthenticatedCartProvider>
             <OrderProvider>
               <VendorProvider>
                 <AdminProvider>
@@ -112,7 +118,7 @@ export default function App() {
                 </AdminProvider>
               </VendorProvider>
             </OrderProvider>
-          </CartProvider>
+          </AuthenticatedCartProvider>
         </LocationProvider>
       </AuthProvider>
     </BrowserRouter>

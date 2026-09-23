@@ -74,6 +74,8 @@ const orderSchema = new mongoose.Schema({
     platformCommission: { type: Number, default: 0 },
     vendorNetAmount: { type: Number, default: 0 },
     commissionRate: { type: Number, default: 0 },
+    riderPayoutAmount: { type: Number, default: 0 },
+    riderPayoutRate: { type: Number, default: 0.6 },
     payoutReference: { type: String, default: '' },
     paidAt: { type: Date, default: null },
     paidBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false }

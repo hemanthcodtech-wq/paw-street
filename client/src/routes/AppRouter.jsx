@@ -44,7 +44,6 @@ const DeliveryLoginPage = lazy(() => import('../pages/Delivery/DeliveryLoginPage
 const DeliveryDashboardPage = lazy(() => import('../pages/Delivery/DeliveryDashboardPage'));
 const DeliveryLiveMapPage = lazy(() => import('../pages/Delivery/DeliveryLiveMapPage'));
 const DeliveryCodPage = lazy(() => import('../pages/Delivery/DeliveryCodPage'));
-const DeliveryEarningsPage = lazy(() => import('../pages/Delivery/DeliveryEarningsPage'));
 
 export default function AppRouter() {
   const location = useLocation();
@@ -110,7 +109,6 @@ export default function AppRouter() {
           <Route path="/delivery/dashboard" element={<ProtectedRoute role="delivery"><DeliveryLayout><DeliveryDashboardPage /></DeliveryLayout></ProtectedRoute>} />
           <Route path="/delivery/navigation" element={<ProtectedRoute role="delivery"><DeliveryLayout><DeliveryLiveMapPage /></DeliveryLayout></ProtectedRoute>} />
           <Route path="/delivery/cod" element={<ProtectedRoute role="delivery"><DeliveryLayout><DeliveryCodPage /></DeliveryLayout></ProtectedRoute>} />
-          <Route path="/delivery/earnings" element={<ProtectedRoute role="delivery"><DeliveryLayout><DeliveryEarningsPage /></DeliveryLayout></ProtectedRoute>} />
 
           {/* 404 Not Found Catch-All Route */}
           <Route path="*" element={<NotFoundPage />} />
