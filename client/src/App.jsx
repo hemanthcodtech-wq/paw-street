@@ -18,6 +18,7 @@ import BottomNav from './components/common/BottomNav';
 import LocationModal from './components/common/LocationModal';
 import AuthModal from './components/common/AuthModal';
 import ScrollToTop from './components/common/ScrollToTop';
+import ChatBotWidget from './components/support/ChatBotWidget';
 
 // Application Routing
 import AppRouter from './routes/AppRouter';
@@ -95,6 +96,9 @@ function AppContent() {
 
       {/* Global Dynamic Toast */}
       <GlobalToast />
+
+      {/* Global Pet Support Chatbot */}
+      <ChatBotWidget />
     </div>
   );
 }
