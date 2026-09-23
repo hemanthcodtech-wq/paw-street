@@ -1,23 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  MessageSquare, 
-  X, 
-  Send, 
-  Bot, 
-  User, 
-  Sparkles, 
-  Package, 
-  RotateCcw, 
-  PhoneCall, 
-  HelpCircle,
-  CheckCircle2,
-  ChevronRight
-} from 'lucide-react';
+import { Bot, ChevronRight, Send, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useOrders } from '../../context/OrderContext';
 
 export default function ChatBotWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const { orders } = useOrders();
+  const navigate = useNavigate();
   const messagesEndRef = useRef(null);
 
   const [messages, setMessages] = useState([
@@ -70,9 +59,15 @@ export default function ChatBotWidget() {
       const lower = text.toLowerCase();
 
       if (lower.includes('where is my order') || lower.includes('track') || lower.includes('delivery')) {
-        const latest = orders[0];
-        replyText = `Your active order #${latest.id} (${latest.items[0]?.name}) is currently ${latest.statusLabel}! 🛵 Rider Suresh Kumar is on his way and expected to arrive in ~8 minutes.`;
-        quickActions = ['View live map tracking', 'Call delivery rider', 'Return to main menu'];
+        const latest = Array.isArray(orders) ? orders[0] : null;
+        if (!latest) {
+          replyText = 'You do not have any orders yet. Once you place an order, I can help you track it here.';
+          quickActions = ['Shop Pet Food', 'Browse Pets for Sale', 'Return to main menu'];
+        } else {
+          const itemName = latest.items?.[0]?.name || 'your pet items';
+          replyText = `Your latest order #${latest.id} (${itemName}) is currently ${latest.statusLabel || latest.status || 'being processed'}. I can help you open its tracking details.`;
+          quickActions = ['View live map tracking', 'Call delivery rider', 'Return to main menu'];
+        }
       } else if (lower.includes('return') || lower.includes('refund')) {
         replyText = 'We have a 7-day hassle-free pet satisfaction guarantee! Would you like to request a return for a damaged item, wrong size, or pet preference?';
         quickActions = ['Submit return for recent order', 'Talk to refund specialist'];
@@ -99,6 +94,31 @@ export default function ChatBotWidget() {
         }
       ]);
     }, 600);
+  };
+
+  const handleQuickAction = (action) => {
+    const lower = action.toLowerCase();
+    if (lower.includes('shop dog food') || lower.includes('shop pet food')) {
+      navigate('/category/food');
+      setIsOpen(false);
+      return;
+    }
+    if (lower.includes('pets for sale') || lower.includes('browse pets')) {
+      navigate('/category/pet-sale');
+      setIsOpen(false);
+      return;
+    }
+    if (lower.includes('live map tracking')) {
+      const latest = Array.isArray(orders) ? orders[0] : null;
+      if (latest?.id || latest?._id) {
+        navigate(`/track-order/${latest.id || latest._id}`);
+        setIsOpen(false);
+      } else {
+        handleSend(action);
+      }
+      return;
+    }
+    handleSend(action);
   };
 
   return (
@@ -170,7 +190,7 @@ export default function ChatBotWidget() {
                       {msg.quickActions.map((action, i) => (
                         <button
                           key={i}
-                          onClick={() => handleSend(action)}
+                          onClick={() => handleQuickAction(action)}
                           className="text-left text-[11px] font-semibold bg-amber-50 hover:bg-amber-100 text-amber-900 px-3 py-1.5 rounded-xl border border-amber-200/80 transition-all flex items-center justify-between group"
                         >
                           <span>{action}</span>
