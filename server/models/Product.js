@@ -27,6 +27,15 @@ const productSchema = new mongoose.Schema({
     type: String,
     default: 'Dog'
   },
+  breed: {
+    type: String,
+    default: ''
+  },
+  ageYears: {
+    type: Number,
+    min: 0,
+    default: null
+  },
   vendor: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Vendor',

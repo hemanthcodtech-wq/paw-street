@@ -34,6 +34,8 @@ function normalizeProduct(p) {
     category: p.category?.toLowerCase() || 'food',
     subcategory: p.subCategory || p.subcategory || '',
     petType: p.petType || 'All Pets',
+    breed: p.breed || '',
+    ageYears: p.ageYears,
     price: p.price || 0,
     mrp: p.mrp || p.price || 0,
     discountPercent: p.mrp && p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0,
@@ -432,6 +434,14 @@ export default function ProductDetailPage() {
                   <h6 className="font-heading font-bold text-xs text-slate-800 mb-1">Pet Type</h6>
                   <p className="text-xs text-slate-500">{product.petType}</p>
                 </div>
+                {product.category === 'pet-sale' && (
+                  <div className="p-4 rounded-2xl bg-lime-50 border border-lime-200">
+                    <h6 className="font-heading font-bold text-xs text-slate-800 mb-1">Pet Details</h6>
+                    <p className="text-xs text-slate-500">
+                      {product.breed || 'Breed not specified'}{product.ageYears !== null && product.ageYears !== undefined ? ` • ${product.ageYears} years old` : ''}
+                    </p>
+                  </div>
+                )}
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
                   <h6 className="font-heading font-bold text-xs text-slate-800 mb-1">Instant Store Dispatch</h6>
                   <p className="text-xs text-slate-500">Shipped with temperature-regulated express delivery</p>

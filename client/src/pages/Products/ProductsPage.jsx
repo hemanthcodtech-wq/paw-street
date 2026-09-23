@@ -30,6 +30,8 @@ function normalizeProduct(p) {
     category: p.category?.toLowerCase() || 'food',
     subcategory: p.subCategory || p.subcategory || '',
     petType: p.petType || 'All Pets',
+    breed: p.breed || '',
+    ageYears: p.ageYears,
     price: p.price || 0,
     mrp: p.mrp || p.price || 0,
     discountPercent: p.mrp && p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0,
@@ -134,8 +136,9 @@ export default function ProductsPage() {
 
     // Subcategory
     if (activeSubcategory !== 'All') {
-      list = list.filter(p =>
-        (p.subcategory || '').toLowerCase().includes(activeSubcategory.toLowerCase())
+      list = list.filter(p => activeCategory === 'pet-sale'
+        ? (p.petType || '').toLowerCase().includes(activeSubcategory.replace(/s$/, '').toLowerCase())
+        : (p.subcategory || '').toLowerCase().includes(activeSubcategory.toLowerCase())
       );
     }
 
@@ -338,7 +341,7 @@ export default function ProductsPage() {
           <div>
             <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Pet Type</h4>
             <div className="space-y-1.5">
-              {['All', 'Dog', 'Cat', 'Bird', 'Fish'].map((type) => (
+              {['All', 'Dog', 'Cat', 'Bird', 'Fish', 'Small Pet'].map((type) => (
                 <label
                   key={type}
                   className="flex items-center gap-2 text-xs text-slate-600 hover:text-slate-900 cursor-pointer p-1.5 rounded-lg hover:bg-slate-50"

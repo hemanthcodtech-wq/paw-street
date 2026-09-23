@@ -95,6 +95,7 @@ router.get('/', async (req, res) => {
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
         { category: { $regex: search, $options: 'i' } },
+        { breed: { $regex: search, $options: 'i' } },
         { vendorName: { $regex: search, $options: 'i' } }
       ];
     }
@@ -105,6 +106,7 @@ router.get('/', async (req, res) => {
         .populate('vendor', 'storeName email phone location photos serviceDeliveryModes status isStoreOpen rating')
         .sort({ createdAt: -1 });
       products = products.filter(product => {
+        if (product.category === 'pet-sale' && (product.stock || 0) <= 0) return false;
         if (!product.vendor) return true;
         return product.vendor.status === 'approved' && product.vendor.isStoreOpen !== false;
       });
@@ -134,6 +136,10 @@ router.get('/:id', async (req, res) => {
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    if (product.category === 'pet-sale' && (product.stock || 0) <= 0) {
+      return res.status(404).json({ success: false, message: 'This pet has already been sold.' });
     }
 
     res.json({ success: true, product });

@@ -171,9 +171,10 @@ export default function VendorProductsPage() {
   
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Top Section Mode: 'products' | 'services'
+  // Top Section Mode: 'products' | 'pet-sale' | 'services'
   const [activeCatalogMode, setActiveCatalogMode] = useState(() => {
-    return searchParams.get('tab') === 'services' ? 'services' : 'products';
+    const tab = searchParams.get('tab');
+    return tab === 'services' || tab === 'pet-sale' ? tab : 'products';
   });
 
   // Product Filters
@@ -210,7 +211,9 @@ export default function VendorProductsPage() {
     mrp: '',
     stockCount: 20,
     image: '/images/prod_pedigree.jpg',
-    description: ''
+    description: '',
+    breed: '',
+    ageYears: ''
   });
 
   // Form State for Add / Edit Service
@@ -241,8 +244,31 @@ export default function VendorProductsPage() {
       mrp: '',
       stockCount: 25,
       image: '',
-      description: ''
+      description: '',
+      breed: '',
+      ageYears: ''
     });
+    setShowAddProductModal(true);
+  };
+
+  const handleOpenAddPet = () => {
+    setEditingProduct(null);
+    setProductFormData({
+      name: '',
+      shortName: '',
+      category: 'pet-sale',
+      petType: 'Dog',
+      brand: '',
+      price: '',
+      mrp: '',
+      stockCount: 1,
+      image: '',
+      description: '',
+      breed: '',
+      ageYears: ''
+    });
+    setCategoryFilter('pet-sale');
+    setActiveCatalogMode('pet-sale');
     setShowAddProductModal(true);
   };
 
@@ -258,17 +284,27 @@ export default function VendorProductsPage() {
       mrp: prod.mrp || prod.price,
       stockCount: prod.stockCount || 10,
       image: prod.image,
-      description: prod.description || ''
+      description: prod.description || '',
+      breed: prod.breed || '',
+      ageYears: prod.ageYears ?? ''
     });
     setShowAddProductModal(true);
   };
 
   const handleSaveProduct = (e) => {
     e.preventDefault();
+    const payload = productFormData.category === 'pet-sale'
+      ? {
+          ...productFormData,
+          name: `${productFormData.petType} - ${productFormData.breed}`,
+          mrp: productFormData.price,
+          stockCount: editingProduct ? productFormData.stockCount : 1
+        }
+      : productFormData;
     if (editingProduct) {
-      updateProduct(editingProduct.id, productFormData);
+      updateProduct(editingProduct.id, payload);
     } else {
-      addProduct(productFormData);
+      addProduct(payload);
     }
     setShowAddProductModal(false);
     setEditingProduct(null);
@@ -341,7 +377,8 @@ export default function VendorProductsPage() {
   // Filtered Products
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          (p.brand && p.brand.toLowerCase().includes(searchQuery.toLowerCase()));
+                          (p.brand && p.brand.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                          (p.breed && p.breed.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCategory = categoryFilter === 'all' || p.category === categoryFilter;
     const matchesStock = stockFilter === 'all' 
       ? true 
@@ -363,6 +400,8 @@ export default function VendorProductsPage() {
     return matchesSearch && matchesMode;
   });
 
+  const isPetSaleForm = productFormData.category === 'pet-sale';
+
   return (
     <div className="space-y-6">
       
@@ -373,9 +412,6 @@ export default function VendorProductsPage() {
             <h1 className="font-heading font-black text-xl sm:text-2xl text-slate-900 tracking-tight">
               Catalog & Service Management
             </h1>
-            <span className="bg-amber-100 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full">
-              Section 4.2
-            </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Manage your retail product inventory, at-home doorstep services, and in-clinic appointments.
@@ -385,7 +421,7 @@ export default function VendorProductsPage() {
         {/* Dual Tab Switcher */}
         <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200 shrink-0 self-start sm:self-center">
           <button
-            onClick={() => setActiveCatalogMode('products')}
+            onClick={() => { setActiveCatalogMode('products'); setCategoryFilter('all'); }}
             className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
               activeCatalogMode === 'products'
                 ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60'
@@ -394,6 +430,17 @@ export default function VendorProductsPage() {
           >
             <Package className="w-3.5 h-3.5 text-amber-500" />
             <span>📦 Retail Products ({products.length})</span>
+          </button>
+          <button
+            onClick={() => { setActiveCatalogMode('pet-sale'); setCategoryFilter('pet-sale'); }}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+              activeCatalogMode === 'pet-sale'
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span className="text-lime-600">🐾</span>
+            <span>Pets for Sale ({products.filter(p => p.category === 'pet-sale').length})</span>
           </button>
           <button
             onClick={() => setActiveCatalogMode('services')}
@@ -412,7 +459,7 @@ export default function VendorProductsPage() {
       {/* =========================================================================
           TAB 1: RETAIL PRODUCTS CATALOG
       ========================================================================= */}
-      {activeCatalogMode === 'products' && (
+      {(activeCatalogMode === 'products' || activeCatalogMode === 'pet-sale') && (
         <div className="space-y-4">
           
           {/* Action & Filters */}
@@ -440,6 +487,7 @@ export default function VendorProductsPage() {
                 <option value="grooming">Grooming & Shampoos</option>
                 <option value="medicines">Pharmacy & Healthcare</option>
                 <option value="toys">Toys & Beds</option>
+                <option value="pet-sale">Pets for Sale</option>
               </select>
 
               <select
@@ -453,11 +501,11 @@ export default function VendorProductsPage() {
               </select>
 
               <button
-                onClick={handleOpenAddProduct}
+                onClick={activeCatalogMode === 'pet-sale' ? handleOpenAddPet : handleOpenAddProduct}
                 className="px-4 py-2 bg-[#FFB703] hover:bg-[#E5A015] text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 active:scale-95"
               >
                 <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                <span>Add Product</span>
+                <span>{activeCatalogMode === 'pet-sale' ? 'Add Pet for Sale' : 'Add Product'}</span>
               </button>
             </div>
           </div>
@@ -485,11 +533,11 @@ export default function VendorProductsPage() {
                         <p className="font-bold text-slate-700 text-sm">No products listed in your store catalog yet</p>
                         <p className="text-xs text-slate-400 mt-1 mb-4">Add your inventory items to start receiving instant delivery orders from pet parents.</p>
                         <button
-                          onClick={handleOpenAddProduct}
+                          onClick={activeCatalogMode === 'pet-sale' ? handleOpenAddPet : handleOpenAddProduct}
                           className="px-4 py-2 bg-[#FFB703] hover:bg-[#E5A015] text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all inline-flex items-center gap-1.5"
                         >
                           <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                          <span>Add Your First Product</span>
+                          <span>{activeCatalogMode === 'pet-sale' ? 'Add Your First Pet' : 'Add Your First Product'}</span>
                         </button>
                       </td>
                     </tr>
@@ -823,10 +871,14 @@ export default function VendorProductsPage() {
                 </div>
                 <div className="min-w-0">
                   <h3 className="font-heading font-black text-sm sm:text-base text-slate-900 truncate">
-                    {editingProduct ? 'Edit Retail Product' : 'Add New Product to Store'}
+                    {editingProduct
+                      ? (productFormData.category === 'pet-sale' ? 'Edit Pet for Sale' : 'Edit Retail Product')
+                      : (productFormData.category === 'pet-sale' ? 'Add Pet for Sale' : 'Add New Product to Store')}
                   </h3>
                   <p className="text-[10px] sm:text-[11px] text-slate-500 truncate">
-                    Post new pet supplies with live pricing and stock availability.
+                    {productFormData.category === 'pet-sale'
+                      ? 'List a pet with verified details, pricing, stock, and a clear photo.'
+                      : 'Post new pet supplies with live pricing and stock availability.'}
                   </p>
                 </div>
               </div>
@@ -842,7 +894,7 @@ export default function VendorProductsPage() {
             {/* Scrollable Form Body */}
             <form onSubmit={handleSaveProduct} className="flex flex-col min-h-0 flex-1">
               <div className="p-4 sm:p-6 overflow-y-auto overscroll-contain flex-1 space-y-4 text-xs">
-                <div>
+                {!isPetSaleForm && <div>
                   <label className="block font-bold text-slate-700 mb-1">
                     Product Full Title *
                   </label>
@@ -854,9 +906,9 @@ export default function VendorProductsPage() {
                     placeholder="e.g. Royal Canin Medium Adult Dog Food 4kg"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-amber-400"
                   />
-                </div>
+                </div>}
 
-                <div className="grid grid-cols-2 gap-3">
+                {!isPetSaleForm && <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">
                       Brand Name
@@ -884,14 +936,15 @@ export default function VendorProductsPage() {
                       <option value="grooming">Shampoo, Wipes & Grooming</option>
                       <option value="medicines">Pharmacy & Healthcare</option>
                       <option value="toys">Chew Toys & Scratchers</option>
+                      <option value="pet-sale">Pets for Sale</option>
                     </select>
                   </div>
-                </div>
+                </div>}
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className={isPetSaleForm ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-3 gap-3'}>
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">
-                      Selling Price (₹) *
+                      {isPetSaleForm ? 'Amount (₹) *' : 'Selling Price (₹) *'}
                     </label>
                     <input
                       type="number"
@@ -904,6 +957,7 @@ export default function VendorProductsPage() {
                     />
                   </div>
 
+                  {!isPetSaleForm && <>
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">
                       MRP / Strike Price
@@ -932,9 +986,10 @@ export default function VendorProductsPage() {
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-amber-400"
                     />
                   </div>
+                  </>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className={isPetSaleForm ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">
                       Pet Type *
@@ -951,7 +1006,7 @@ export default function VendorProductsPage() {
                     </select>
                   </div>
 
-                  <div>
+                  {!isPetSaleForm && <div>
                     <label className="block font-bold text-slate-700 mb-1">
                       Package Size / Weight
                     </label>
@@ -962,8 +1017,37 @@ export default function VendorProductsPage() {
                       placeholder="e.g. 3 kg or Medium"
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-amber-400"
                     />
-                  </div>
+                  </div>}
                 </div>
+
+                {productFormData.category === 'pet-sale' && (
+                  <div className="grid grid-cols-2 gap-3 rounded-2xl bg-lime-50 border border-lime-200 p-3">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Breed *</label>
+                      <input
+                        type="text"
+                        required
+                        value={productFormData.breed || ''}
+                        onChange={(e) => setProductFormData({ ...productFormData, breed: e.target.value })}
+                        placeholder="e.g. Golden Retriever"
+                        className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-lime-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Age (years) *</label>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        step="0.1"
+                        value={productFormData.ageYears ?? ''}
+                        onChange={(e) => setProductFormData({ ...productFormData, ageYears: e.target.value })}
+                        placeholder="e.g. 1.5"
+                        className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-lime-500"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <ImageUploadField
                   label="Product Image"

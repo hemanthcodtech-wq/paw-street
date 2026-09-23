@@ -50,6 +50,7 @@ export default function Header() {
   const navLinks = [
     { name: 'All Products', path: '/products' },
     { name: 'Pet Food', path: '/category/food' },
+    { name: 'Pets for Sale', path: '/category/pet-sale' },
     { name: 'Accessories', path: '/category/accessories' },
     { name: 'Grooming & Spa', path: '/services' },
     { name: 'Vet Clinic', path: '/services?tab=clinic' },

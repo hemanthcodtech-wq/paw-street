@@ -1,5 +1,16 @@
 export const CATEGORIES = [
   {
+    id: 'pet-sale',
+    name: 'Pets for Sale',
+    subtitle: 'Find your new companion',
+    icon: '🐾',
+    image: '/images/promo_puppy.jpg',
+    color: 'bg-lime-50 text-lime-800 border-lime-100',
+    accentColor: '#84CC16',
+    badge: 'Verified Vendors',
+    subcategories: ['Dogs', 'Cats', 'Birds', 'Fish', 'Small Pets']
+  },
+  {
     id: 'grooming',
     name: 'Grooming',
     subtitle: 'Baths, haircuts & spa',

@@ -300,6 +300,11 @@ export default function ProductCard({ product, layout = 'grid' }) {
               {product.shortName || product.name}
             </h4>
           </Link>
+          {product.category === 'pet-sale' && (
+            <p className="text-[10px] text-slate-500 mt-1 truncate">
+              {product.petType}{product.breed ? ` • ${product.breed}` : ''}{product.ageYears !== null && product.ageYears !== undefined ? ` • ${product.ageYears} yrs` : ''}
+            </p>
+          )}
         </div>
 
         {/* Price & Rating Bottom Row */}
