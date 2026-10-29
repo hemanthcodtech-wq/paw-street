@@ -52,6 +52,14 @@ export function AuthProvider({ children }) {
     return res;
   };
 
+  const loginWithTokenAndUser = async (token, userData) => {
+    setUser(userData);
+    setIsLoggedIn(true);
+    if (userData.pets) setPets(userData.pets);
+    await AsyncStorage.setItem('paw_user_token', token);
+    await AsyncStorage.setItem('paw_user_profile', JSON.stringify(userData));
+  };
+
   const register = async (userData) => {
     const newUser = {
       ...USER_SEED,
@@ -112,6 +120,7 @@ export function AuthProvider({ children }) {
         selectedLocation,
         updateLocation,
         login,
+        loginWithTokenAndUser,
         register,
         logout,
         loading

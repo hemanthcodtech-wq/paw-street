@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Platform, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import BrandLogo from '../components/BrandLogo';
 import { colors } from '../theme/colors';
 
 export default function AuthScreen({ navigation }) {
-  const { login, register } = useAuth();
+  const { login, register, loginWithTokenAndUser } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,6 +16,52 @@ export default function AuthScreen({ navigation }) {
   const [petName, setPetName] = useState('');
   const [petBreed, setPetBreed] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Deep Link listener for Google Auth Bridge (pawstreetuser://auth)
+  useEffect(() => {
+    const handleUrl = (event) => {
+      const url = event?.url || event;
+      if (!url) return;
+
+      try {
+        const parsed = new URL(url);
+        const status = parsed.searchParams.get('status');
+        const token = parsed.searchParams.get('token');
+        const userJson = parsed.searchParams.get('user');
+        const googleEmail = parsed.searchParams.get('email');
+        const googleName = parsed.searchParams.get('name');
+        const message = parsed.searchParams.get('message');
+
+        if (status === 'success' && token && userJson) {
+          const userData = JSON.parse(decodeURIComponent(userJson));
+          loginWithTokenAndUser(token, userData);
+          navigation.replace('MainTabs');
+        } else if (status === 'not_registered') {
+          // STRICT CHECK: User not registered -> prompt to sign up with email prefilled
+          Alert.alert(
+            'Account Not Found',
+            `No registered account found for ${googleEmail || 'this Google email'}. Please complete sign up to create your account.`
+          );
+          setIsSignUp(true);
+          if (googleEmail) setEmail(googleEmail);
+          if (googleName) setName(googleName);
+        } else if (status === 'error') {
+          Alert.alert('Sign In Error', message || 'Google authentication was cancelled.');
+        }
+      } catch (err) {
+        console.warn('Deep link parse error:', err);
+      }
+    };
+
+    const sub = Linking.addEventListener('url', handleUrl);
+    Linking.getInitialURL().then((initUrl) => {
+      if (initUrl) handleUrl(initUrl);
+    });
+
+    return () => {
+      if (sub && typeof sub.remove === 'function') sub.remove();
+    };
+  }, [navigation, loginWithTokenAndUser]);
 
   const handleCustomerLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -36,11 +82,14 @@ export default function AuthScreen({ navigation }) {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      await login('google_user@thepawstreet.com', 'google_auth_token');
-      navigation.replace('MainTabs');
+      const authUrl = 'https://pawnear.in/api/auth/google/start?app=user&role=customer';
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.location.href = authUrl;
+      } else {
+        await Linking.openURL(authUrl);
+      }
     } catch (e) {
-      Alert.alert('Google Sign-In', 'Google sign-in simulation completed');
-      navigation.replace('MainTabs');
+      Alert.alert('Google Sign-In Error', e.message || 'Unable to open Google sign in.');
     } finally {
       setLoading(false);
     }

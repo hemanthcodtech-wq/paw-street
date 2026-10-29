@@ -22,7 +22,7 @@ import { api } from '../../services/api';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { user, loginWithPhone, loginWithEmail, loginWithGoogle, sendEmailOtp, verifyEmailOtp } = useAuth();
+  const { user, loginWithPhone, loginWithEmail, loginWithGoogle, startGoogleAuthBridge, sendEmailOtp, verifyEmailOtp } = useAuth();
 
   const [authMethod, setAuthMethod] = useState('email'); // 'email' | 'phone'
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -45,6 +45,15 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [statusNotice, setStatusNotice] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const alertType = params.get('alert');
+    const paramEmail = params.get('email');
+    if (alertType === 'not_registered') {
+      setErrorMessage(`No registered account found with ${paramEmail || 'this Google email'}. Please click "Create Account" below to register.`);
+    }
+  }, []);
 
   useEffect(() => {
     let interval = null;
@@ -187,18 +196,11 @@ export default function LoginPage() {
     }
   };
 
-  // Handle Google OAuth Sign In
-  const handleSocialLogin = async () => {
+  // Handle Google OAuth Sign In via Auth Bridge (prompt=select_account)
+  const handleSocialLogin = () => {
     setIsLoading(true);
     setErrorMessage('');
-    try {
-      await loginWithGoogle();
-      navigate('/');
-    } catch (err) {
-      setErrorMessage('Google authentication cancelled or failed.');
-    } finally {
-      setIsLoading(false);
-    }
+    startGoogleAuthBridge('customer');
   };
 
   const handleOtpChange = (index, value) => {

@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Linking, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePartnerAuth } from '../../context/PartnerAuthContext';
 import BrandLogo from '../../components/BrandLogo';
 import { colors } from '../../theme/colors';
 
 export default function DeliveryAuthScreen({ navigation }) {
-  const { switchRole, loginPartner, registerPartner } = usePartnerAuth();
+  const { switchRole, loginPartner, registerPartner, loginPartnerWithTokenAndUser } = usePartnerAuth();
 
   // Mode: 'signin' | 'signup'
   const [mode, setMode] = useState('signin');
@@ -26,6 +26,70 @@ export default function DeliveryAuthScreen({ navigation }) {
     drivingLicense: '',
     zone: 'Banjara Hills & Jubilee Hills',
   });
+
+  // Deep Link listener for Google Auth Bridge
+  useEffect(() => {
+    const handleUrl = (event) => {
+      const url = event?.url || event;
+      if (!url) return;
+
+      try {
+        const parsed = new URL(url);
+        const status = parsed.searchParams.get('status');
+        const token = parsed.searchParams.get('token');
+        const userJson = parsed.searchParams.get('user');
+        const googleEmail = parsed.searchParams.get('email');
+        const googleName = parsed.searchParams.get('name');
+        const message = parsed.searchParams.get('message');
+
+        if (status === 'success' && token && userJson) {
+          const userData = JSON.parse(decodeURIComponent(userJson));
+          loginPartnerWithTokenAndUser(token, userData, 'delivery');
+          navigation.replace('MainTabs');
+        } else if (status === 'not_registered') {
+          Alert.alert(
+            'Rider Account Not Found',
+            `No registered delivery account found for ${googleEmail || 'this email'}. Please complete registration below to join the fleet.`
+          );
+          setMode('signup');
+          setRiderForm((prev) => ({
+            ...prev,
+            email: googleEmail || prev.email,
+            name: googleName || prev.name,
+          }));
+        } else if (status === 'error') {
+          Alert.alert('Sign In Error', message || 'Google sign-in was cancelled.');
+        }
+      } catch (err) {
+        console.warn('Deep link parse error:', err);
+      }
+    };
+
+    const sub = Linking.addEventListener('url', handleUrl);
+    Linking.getInitialURL().then((initUrl) => {
+      if (initUrl) handleUrl(initUrl);
+    });
+
+    return () => {
+      if (sub && typeof sub.remove === 'function') sub.remove();
+    };
+  }, [navigation, loginPartnerWithTokenAndUser]);
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    try {
+      const authUrl = 'https://pawnear.in/api/auth/google/start?app=partner&role=delivery';
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.location.href = authUrl;
+      } else {
+        await Linking.openURL(authUrl);
+      }
+    } catch (e) {
+      Alert.alert('Google Sign-In Error', e.message || 'Unable to open Google sign in.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleRiderLogin = async () => {
     const trimmedEmail = email.trim();
@@ -169,6 +233,22 @@ export default function DeliveryAuthScreen({ navigation }) {
               <Text style={styles.submitBtnText}>
                 {loading ? 'Accessing Hub...' : 'Sign In as Delivery Captain'}
               </Text>
+            </TouchableOpacity>
+
+            {/* Google Sign In Option */}
+            <View style={styles.orDividerRow}>
+              <View style={styles.orDividerLine} />
+              <Text style={styles.orDividerText}>OR</Text>
+              <View style={styles.orDividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.googleBtn}
+              onPress={handleGoogleSignIn}
+              disabled={loading}
+            >
+              <Ionicons name="logo-google" size={18} color="#EA4335" style={{ marginRight: 8 }} />
+              <Text style={styles.googleBtnText}>Continue with Google</Text>
             </TouchableOpacity>
 
 
@@ -517,6 +597,43 @@ const styles = StyleSheet.create({
   typeChipTextActive: {
     color: '#FFFFFF',
     fontWeight: '800',
+  },
+  orDividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 14,
+  },
+  orDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E2E8F0',
+  },
+  orDividerText: {
+    marginHorizontal: 10,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94A3B8',
+  },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    paddingVertical: 12,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  googleBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
   },
 });
 

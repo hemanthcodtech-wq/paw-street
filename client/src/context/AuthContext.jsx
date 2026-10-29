@@ -185,15 +185,21 @@ export function AuthProvider({ children }) {
         if (res && res.success && res.user && res.token) {
           saveAuthSession(res.user, res.token);
           setIsAuthModalOpen(false);
-          return;
+          return { success: true, user: res.user };
+        } else if (res && res.notRegistered) {
+          return { success: false, notRegistered: true, email: res.email, name: res.name, message: res.message };
         }
       }
     } catch (err) {
       console.warn('Google login error', err);
     } finally {
       setLoading(false);
-      setIsAuthModalOpen(false);
     }
+  };
+
+  const startGoogleAuthBridge = (role = 'customer') => {
+    const apiBase = api.getBaseUrl().replace(/\/api$/, '');
+    window.location.href = `${apiBase}/api/auth/google/start?app=web&role=${role}`;
   };
 
   const logout = async () => {
@@ -251,6 +257,7 @@ export function AuthProvider({ children }) {
         setIsAuthModalOpen,
         sendEmailOtp,
         verifyEmailOtp,
+        startGoogleAuthBridge,
         loginWithPhone,
         loginWithEmail,
         registerUser,

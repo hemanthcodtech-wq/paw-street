@@ -118,6 +118,17 @@ app.use('/api/delivery', require('./routes/deliveryRoutes'));
 app.use('/api/admin', protect, authorizeRoles('admin'), require('./routes/adminRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
 
+// Serve Frontend Website Build from AWS Server
+const fs = require('fs');
+const clientBuildPath = path.join(__dirname, '..', 'client', 'dist');
+if (fs.existsSync(clientBuildPath)) {
+  app.use(express.static(clientBuildPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  });
+}
+
 // Centralized Error & 404 Handlers
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 app.use(notFound);

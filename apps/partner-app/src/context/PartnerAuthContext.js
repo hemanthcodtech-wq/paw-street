@@ -59,6 +59,16 @@ export function PartnerAuthProvider({ children }) {
     return res;
   };
 
+  const loginPartnerWithTokenAndUser = async (token, user, role) => {
+    const targetRole = role || 'vendor';
+    setPartnerRole(targetRole);
+    setPartnerUser(user);
+    setIsLoggedIn(true);
+    await AsyncStorage.setItem('paw_partner_token', token);
+    await AsyncStorage.setItem('paw_partner_role', targetRole);
+    await AsyncStorage.setItem('paw_partner_user', JSON.stringify(user));
+  };
+
   const registerPartner = async (formData, role) => {
     let newUser;
     if (role === 'vendor') {
@@ -106,6 +116,7 @@ export function PartnerAuthProvider({ children }) {
         loading,
         switchRole,
         loginPartner,
+        loginPartnerWithTokenAndUser,
         registerPartner,
         logoutPartner
       }}

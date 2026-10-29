@@ -17,6 +17,7 @@ const AccountPage = lazy(() => import('../pages/Account/AccountPage'));
 const SupportPage = lazy(() => import('../pages/Support/SupportPage'));
 const LoginPage = lazy(() => import('../pages/Auth/LoginPage'));
 const RegisterPage = lazy(() => import('../pages/Auth/RegisterPage'));
+const AuthBridgePage = lazy(() => import('../pages/Auth/AuthBridgePage'));
 const NotFoundPage = lazy(() => import('../pages/NotFound/NotFoundPage'));
 
 // 2. Vendor Module Pages & Layout (Lazy Loaded)
@@ -67,6 +68,8 @@ export default function AppRouter() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/signup" element={<RegisterPage />} />
+          <Route path="/auth-bridge" element={<AuthBridgePage />} />
+          <Route path="/auth/google/callback" element={<AuthBridgePage />} />
 
           {/* Protected Customer Routes */}
           <Route path="/checkout" element={<ProtectedRoute role="customer"><CheckoutPage /></ProtectedRoute>} />

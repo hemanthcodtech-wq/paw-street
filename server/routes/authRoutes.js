@@ -306,8 +306,198 @@ router.post('/verify-otp', async (req, res) => {
   }
 });
 
+// Helper to handle Auth Bridge redirects for mobile apps and web
+const redirectWithBridge = (res, appTarget, params) => {
+  const queryString = new URLSearchParams(params).toString();
+  const clientUrl = process.env.CLIENT_URL || 'https://pawnear.in';
+
+  if (appTarget === 'user') {
+    const deepLink = `pawstreetuser://auth?${queryString}`;
+    const webFallback = `${clientUrl}/auth-bridge?${queryString}&app=user`;
+    return res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>Redirecting to Paw Street App...</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #FAF7F2; text-align: center; padding: 20px; }
+            .card { background: white; padding: 32px 24px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); max-width: 360px; }
+            .btn { display: inline-block; margin-top: 16px; background: #FFB703; color: #0F172A; padding: 12px 24px; border-radius: 12px; font-weight: bold; text-decoration: none; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <h2>🐾 Opening Paw Street App...</h2>
+            <p>If the app does not open automatically, tap below:</p>
+            <a class="btn" href="${deepLink}">Open App</a>
+          </div>
+          <script>
+            window.location.href = "${deepLink}";
+            setTimeout(function() { window.location.href = "${webFallback}"; }, 2000);
+          </script>
+        </body>
+      </html>
+    `);
+  } else if (appTarget === 'partner') {
+    const deepLink = `pawstreetpartner://auth?${queryString}`;
+    const webFallback = `${clientUrl}/auth-bridge?${queryString}&app=partner`;
+    return res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>Redirecting to Partner App...</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #FAF7F2; text-align: center; padding: 20px; }
+            .card { background: white; padding: 32px 24px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); max-width: 360px; }
+            .btn { display: inline-block; margin-top: 16px; background: #FB8500; color: white; padding: 12px 24px; border-radius: 12px; font-weight: bold; text-decoration: none; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <h2>🏬 Opening Partner App...</h2>
+            <p>If the app does not open automatically, tap below:</p>
+            <a class="btn" href="${deepLink}">Open Partner App</a>
+          </div>
+          <script>
+            window.location.href = "${deepLink}";
+            setTimeout(function() { window.location.href = "${webFallback}"; }, 2000);
+          </script>
+        </body>
+      </html>
+    `);
+  } else {
+    return res.redirect(`${clientUrl}/auth-bridge?${queryString}`);
+  }
+};
+
+// @route   GET /api/auth/google/start
+// @desc    Initiate Google OAuth with prompt=select_account to show all device emails
+router.get('/google/start', (req, res) => {
+  const { app = 'web', role = 'customer', redirect: customRedirect } = req.query;
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const host = req.headers['x-forwarded-host'] || req.get('host');
+  const callbackUrl = process.env.GOOGLE_CALLBACK_URL || `${protocol}://${host}/api/auth/google/callback`;
+
+  const stateData = Buffer.from(JSON.stringify({ app, role, customRedirect })).toString('base64');
+
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${encodeURIComponent(clientId)}&` +
+    `redirect_uri=${encodeURIComponent(callbackUrl)}&` +
+    `response_type=code&` +
+    `scope=${encodeURIComponent('openid email profile')}&` +
+    `prompt=select_account&` +
+    `state=${encodeURIComponent(stateData)}`;
+
+  res.redirect(authUrl);
+});
+
+// @route   GET /api/auth/google/callback
+// @desc    Google OAuth Auth-Bridge Callback
+router.get('/google/callback', async (req, res) => {
+  try {
+    const { code, state, error: oauthError } = req.query;
+
+    let stateData = { app: 'web', role: 'customer' };
+    if (state) {
+      try {
+        stateData = JSON.parse(Buffer.from(state, 'base64').toString('utf8'));
+      } catch (e) {}
+    }
+
+    const { app = 'web', role = 'customer' } = stateData;
+
+    if (oauthError || !code) {
+      return redirectWithBridge(res, app, {
+        status: 'error',
+        message: oauthError || 'Google authentication cancelled.'
+      });
+    }
+
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.headers['x-forwarded-host'] || req.get('host');
+    const callbackUrl = process.env.GOOGLE_CALLBACK_URL || `${protocol}://${host}/api/auth/google/callback`;
+
+    let email, name, picture;
+
+    try {
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code,
+          client_id: process.env.GOOGLE_CLIENT_ID,
+          client_secret: clientSecret,
+          redirect_uri: callbackUrl,
+          grant_type: 'authorization_code'
+        })
+      });
+      const tokenData = await tokenResponse.json();
+
+      if (tokenData.access_token) {
+        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${tokenData.access_token}` }
+        });
+        const userInfo = await userInfoRes.json();
+        email = userInfo.email;
+        name = userInfo.name;
+        picture = userInfo.picture;
+      }
+    } catch (fetchErr) {
+      console.warn('OAuth token exchange error:', fetchErr.message);
+    }
+
+    if (!email) {
+      return redirectWithBridge(res, app, {
+        status: 'error',
+        message: 'Could not retrieve Google profile email.'
+      });
+    }
+
+    // CHECK IF REGISTERED IN DATABASE
+    const user = await User.findOne({ email: email.toLowerCase() });
+
+    if (!user) {
+      // STRICT CHECK: User is not registered. Do NOT auto-create. Require sign up!
+      return redirectWithBridge(res, app, {
+        status: 'not_registered',
+        email,
+        name: name || '',
+        role,
+        message: `No account found with ${email}. Please sign up first.`
+      });
+    }
+
+    // Role verification
+    if (role && role !== 'customer' && user.role !== role) {
+      return redirectWithBridge(res, app, {
+        status: 'error',
+        message: `This account is registered as ${user.role}. Please log in through the ${user.role} portal.`
+      });
+    }
+
+    // User is registered: Generate JWT token and log in!
+    const token = generateToken(user._id, user.role, user.email);
+
+    return redirectWithBridge(res, app, {
+      status: 'success',
+      token,
+      role: user.role,
+      user: JSON.stringify(formatUser(user)),
+      message: 'Logged in successfully!'
+    });
+  } catch (err) {
+    console.error('Google callback error:', err);
+    res.status(500).send(`Authentication error: ${err.message}`);
+  }
+});
+
 // @route   POST /api/auth/google
-// @desc    Authenticate with Google OAuth ID Token
+// @desc    Authenticate with Google OAuth ID Token (Web Direct)
 router.post('/google', async (req, res) => {
   try {
     const { credential, profile } = req.body;
@@ -326,7 +516,6 @@ router.post('/google', async (req, res) => {
         picture = payload.picture;
         googleId = payload.sub;
       } catch (tokenErr) {
-        // Fallback to client profile if client-side parsed
         if (profile) {
           email = profile.email;
           name = profile.name;
@@ -348,27 +537,14 @@ router.post('/google', async (req, res) => {
     const requestedRole = profile?.role && allowedRoles.includes(profile.role) ? profile.role : null;
     let user = await User.findOne({ email: email.toLowerCase() });
 
-    if (requestedRole === 'admin' && !credential) {
-      return res.status(400).json({
-        success: false,
-        message: 'Admin Google sign-in requires a verified Google credential.'
-      });
-    }
-
+    // STRICT CHECK: If user is not registered in DB, return notRegistered flag!
     if (!user) {
-      if (requestedRole === 'admin') {
-        return res.status(403).json({
-          success: false,
-          message: 'No administrator account exists for this Google profile.'
-        });
-      }
-      user = await User.create({
-        name: name || 'Pet Parent',
-        email: email.toLowerCase(),
-        googleId,
-        avatar: picture || '',
-        role: requestedRole || 'customer',
-        isVerified: true
+      return res.status(404).json({
+        success: false,
+        notRegistered: true,
+        email,
+        name: name || '',
+        message: `No account found with ${email}. Please sign up to create your account.`
       });
     }
 

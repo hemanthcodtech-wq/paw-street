@@ -1,9 +1,9 @@
 @echo off
-title Paw Street - Git Auto Commit
+title Paw Street - Git Commit & Push
 cd /d "%~dp0"
 
 echo ========================================================
-echo 1. Syncing Website Logo to User and Partner Apps...
+echo 1. Syncing Official Website Logo...
 echo ========================================================
 call node sync-logo.js
 
@@ -15,19 +15,18 @@ call git add -A
 
 echo.
 echo ========================================================
-echo 3. Creating Git Commit...
+echo 3. Committing All Changes...
 echo ========================================================
-call git commit -m "feat: switch to AWS Server DB & S3, separate user and partner mobile apps with official logo"
+call git commit -m "feat: google auth bridge with strict registered check, live credentials, aws server db, aws s3, and dual mobile apps"
 
 echo.
 echo ========================================================
-echo 4. Current Git Status:
+echo 4. Pushing to GitHub repository...
 echo ========================================================
-call git status
+call git push
 
 echo.
 echo ========================================================
-echo All changes committed! You can now run: git push
+echo Git commit and push completed successfully!
 echo ========================================================
 pause
-

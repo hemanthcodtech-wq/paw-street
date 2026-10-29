@@ -13,3 +13,6 @@ client/.env.development
 !client/.env.example
 .DS_Store
 *.log
+*.pem
+.expo/
+~/

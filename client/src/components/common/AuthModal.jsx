@@ -15,7 +15,7 @@ import Logo from './Logo';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AuthModal() {
-  const { isAuthModalOpen, setIsAuthModalOpen, loginWithPhone, loginWithGoogle } = useAuth();
+  const { isAuthModalOpen, setIsAuthModalOpen, loginWithPhone, loginWithGoogle, startGoogleAuthBridge } = useAuth();
   
   const [authMethod, setAuthMethod] = useState('email'); // 'email' | 'phone'
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -137,7 +137,7 @@ export default function AuthModal() {
               {/* Google Social Login */}
               <button
                 type="button"
-                onClick={loginWithGoogle}
+                onClick={() => startGoogleAuthBridge('customer')}
                 className="w-full py-2.5 px-4 border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-2xs"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
