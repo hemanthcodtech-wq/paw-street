@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const upload = require('../middleware/uploadMiddleware');
-const { uploadToCloudinary } = require('../config/cloudinary');
+const { uploadToS3 } = require('../config/s3');
 
 // @route   POST /api/upload
-// @desc    Upload file/photo to Cloudinary
+// @desc    Upload file/photo to AWS S3 Server
 router.post('/', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
@@ -12,13 +12,19 @@ router.post('/', upload.single('image'), async (req, res) => {
     }
 
     const folder = req.body.folder || 'pawnear/general';
-    const result = await uploadToCloudinary(req.file.buffer, folder);
+    const result = await uploadToS3(
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype,
+      folder
+    );
 
     res.json({
       success: true,
-      message: 'Image uploaded to Cloudinary successfully!',
-      url: result.secure_url || result.url,
-      publicId: result.public_id,
+      message: 'Image uploaded to AWS S3 successfully!',
+      url: result.url,
+      key: result.key,
+      bucket: result.bucket,
       format: result.format
     });
   } catch (error) {
@@ -27,7 +33,7 @@ router.post('/', upload.single('image'), async (req, res) => {
 });
 
 // @route   POST /api/upload/multiple
-// @desc    Upload multiple files (e.g. KYC docs, storefront photos)
+// @desc    Upload multiple files (e.g. KYC docs, storefront photos) to AWS S3
 router.post('/multiple', upload.array('images', 5), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
@@ -35,13 +41,15 @@ router.post('/multiple', upload.array('images', 5), async (req, res) => {
     }
 
     const folder = req.body.folder || 'pawnear/multi';
-    const uploadPromises = req.files.map(file => uploadToCloudinary(file.buffer, folder));
+    const uploadPromises = req.files.map(file =>
+      uploadToS3(file.buffer, file.originalname, file.mimetype, folder)
+    );
     const results = await Promise.all(uploadPromises);
 
     res.json({
       success: true,
-      message: 'All images uploaded successfully!',
-      urls: results.map(r => r.secure_url || r.url)
+      message: 'All images uploaded to AWS S3 successfully!',
+      urls: results.map(r => r.url)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

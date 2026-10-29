@@ -271,141 +271,72 @@ export default function LoginPage() {
           {/* 1. Normal Sign In View */}
           {step === 'input' && (
             <>
-              {/* Method Switcher Tabs */}
-              <div className="flex bg-slate-100 p-1 rounded-2xl mb-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMethod('email');
-                    setErrorMessage('');
-                  }}
-                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 ${
-                    authMethod === 'email'
-                      ? 'bg-white text-slate-900 shadow-sm font-extrabold'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <Mail className={`w-3.5 h-3.5 ${authMethod === 'email' ? 'text-amber-500' : ''}`} />
-                  <span>Email & Password</span>
-                </button>
-                
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMethod('phone');
-                    setErrorMessage('');
-                  }}
-                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 ${
-                    authMethod === 'phone'
-                      ? 'bg-white text-slate-900 shadow-sm font-extrabold'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <Smartphone className={`w-3.5 h-3.5 ${authMethod === 'phone' ? 'text-amber-500' : ''}`} />
-                  <span>Mobile OTP</span>
-                </button>
-              </div>
+              {/* Email & Password Login Form */}
+              <form onSubmit={handleEmailLogin} className="space-y-4 text-xs">
+                <div>
+                  <label className="block font-extrabold text-slate-700 uppercase tracking-wider mb-1.5 text-[11px]">
+                    Email Address
+                  </label>
+                  <div className="flex items-center rounded-2xl border border-slate-200 focus-within:border-amber-500 focus-within:ring-4 focus-within:ring-amber-100 px-3.5 py-3 bg-slate-50/50 transition-all duration-200">
+                    <Mail className="w-4 h-4 text-slate-400 mr-2.5 shrink-0" />
+                    <input
+                      type="email"
+                      placeholder="Enter your email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="w-full text-xs sm:text-sm bg-transparent outline-none font-semibold text-slate-800"
+                    />
+                  </div>
+                </div>
 
-              {/* Form A: Email & Password */}
-              {authMethod === 'email' ? (
-                <form onSubmit={handleEmailLogin} className="space-y-4 text-xs">
-                  <div>
-                    <label className="block font-extrabold text-slate-700 uppercase tracking-wider mb-1.5 text-[11px]">
-                      Email Address
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="font-extrabold text-slate-700 uppercase tracking-wider text-[11px]">
+                      Password
                     </label>
-                    <div className="flex items-center rounded-2xl border border-slate-200 focus-within:border-amber-500 focus-within:ring-4 focus-within:ring-amber-100 px-3.5 py-3 bg-slate-50/50 transition-all duration-200">
-                      <Mail className="w-4 h-4 text-slate-400 mr-2.5 shrink-0" />
-                      <input
-                        type="email"
-                        placeholder="Enter your email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        className="w-full text-xs sm:text-sm bg-transparent outline-none font-semibold text-slate-800"
-                      />
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForgotEmail(email);
+                        setErrorMessage('');
+                        setStatusNotice('');
+                        setStep('forgot_email');
+                      }}
+                      className="text-[11px] font-bold text-amber-600 hover:text-amber-700 hover:underline"
+                    >
+                      Forgot?
+                    </button>
                   </div>
-
-                  <div>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <label className="font-extrabold text-slate-700 uppercase tracking-wider text-[11px]">
-                        Password
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setForgotEmail(email);
-                          setErrorMessage('');
-                          setStatusNotice('');
-                          setStep('forgot_email');
-                        }}
-                        className="text-[11px] font-bold text-amber-600 hover:text-amber-700 hover:underline"
-                      >
-                        Forgot?
-                      </button>
-                    </div>
-                    <div className="flex items-center rounded-2xl border border-slate-200 focus-within:border-amber-500 focus-within:ring-4 focus-within:ring-amber-100 px-3.5 py-3 bg-slate-50/50 transition-all duration-200">
-                      <Lock className="w-4 h-4 text-slate-400 mr-2.5 shrink-0" />
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="Enter your password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        className="w-full text-xs sm:text-sm bg-transparent outline-none font-semibold text-slate-800"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="text-slate-400 hover:text-slate-600 p-1 transition-colors"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
+                  <div className="flex items-center rounded-2xl border border-slate-200 focus-within:border-amber-500 focus-within:ring-4 focus-within:ring-amber-100 px-3.5 py-3 bg-slate-50/50 transition-all duration-200">
+                    <Lock className="w-4 h-4 text-slate-400 mr-2.5 shrink-0" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="w-full text-xs sm:text-sm bg-transparent outline-none font-semibold text-slate-800"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-slate-400 hover:text-slate-600 p-1 transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
+                </div>
 
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full py-3.5 bg-[#FFB703] hover:bg-[#E5A015] active:scale-98 text-slate-950 font-black text-sm rounded-2xl shadow-md hover:shadow-amber-500/20 transition-all flex items-center justify-center gap-2"
-                  >
-                    <span>{isLoading ? 'Signing In...' : 'Sign In'}</span>
-                    <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-                  </button>
-                </form>
-              ) : (
-                /* Form B: Mobile OTP */
-                <form onSubmit={handleSendOtp} className="space-y-4 text-xs">
-                  <div>
-                    <label className="block font-extrabold text-slate-700 uppercase tracking-wider mb-1.5 text-[11px]">
-                      Mobile Number
-                    </label>
-                    <div className="flex rounded-2xl border border-slate-200 focus-within:border-amber-500 focus-within:ring-4 focus-within:ring-amber-100 overflow-hidden transition-all bg-slate-50/50">
-                      <span className="bg-slate-100 px-3.5 py-3 text-xs font-extrabold text-slate-700 flex items-center border-r border-slate-200 shrink-0">
-                        🇮🇳 +91
-                      </span>
-                      <input
-                        type="tel"
-                        placeholder="Enter 10-digit number"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
-                        maxLength={10}
-                        required
-                        className="w-full px-3.5 py-3 text-xs sm:text-sm bg-transparent outline-none font-semibold text-slate-800"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isLoading || phoneNumber.length < 10}
-                    className="w-full py-3.5 bg-[#FFB703] hover:bg-[#E5A015] active:scale-98 disabled:opacity-50 text-slate-950 font-black text-sm rounded-2xl shadow-md transition-all flex items-center justify-center gap-2"
-                  >
-                    <span>{isLoading ? 'Sending Passcode...' : 'Get OTP Passcode'}</span>
-                    <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-                  </button>
-                </form>
-              )}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-3.5 bg-[#FFB703] hover:bg-[#E5A015] active:scale-98 text-slate-950 font-black text-sm rounded-2xl shadow-md hover:shadow-amber-500/20 transition-all flex items-center justify-center gap-2"
+                >
+                  <span>{isLoading ? 'Signing In...' : 'Sign In'}</span>
+                  <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                </button>
+              </form>
 
               {/* Social Login Separator */}
               <div className="relative flex items-center justify-center my-4">

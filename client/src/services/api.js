@@ -150,7 +150,7 @@ export const api = {
   processAdminVendorPayout: (vendorId, body = {}) => request(`/admin/payouts/${vendorId}/process`, { method: 'POST', body: JSON.stringify(body) }),
   getAdminOrders: () => request('/admin/orders'),
 
-  // 9. Cloudinary Image Upload
+  // 9. AWS S3 Storage Image Upload
   uploadImage: async (file, folder = 'pawnear/general') => {
     const formData = new FormData();
     formData.append('image', file);

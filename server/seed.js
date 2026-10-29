@@ -14,11 +14,11 @@ const SupportTicket = require('./models/SupportTicket');
 
 const seedDatabase = async () => {
   const mongoUri = process.env.MONGO_URI;
-  console.log(`Connecting to MongoDB Atlas...`);
+  console.log(`Connecting to AWS Database...`);
 
   try {
     await mongoose.connect(mongoUri);
-    console.log('Connected to MongoDB Atlas Successfully!');
+    console.log('Connected to AWS Database Successfully!');
 
     // 1. Wipe all existing collections to guarantee clean state
     console.log('Purging old collections from database...');

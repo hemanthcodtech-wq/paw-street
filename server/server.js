@@ -1,3 +1,10 @@
+const dns = require('dns');
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (e) {
+  console.warn('DNS server override ignored:', e.message);
+}
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -14,6 +21,13 @@ const connectDB = require('./config/db');
 connectDB();
 
 const app = express();
+
+// Auto-sync website logo to mobile apps
+try {
+  require('../sync-logo');
+} catch (e) {
+  // Ignore if sync script isn't found
+}
 
 // Security & Parsing Middlewares
 app.use(helmet({
@@ -73,8 +87,8 @@ app.get('/api/health', (req, res) => {
     version: '1.0.0',
     timestamp: new Date().toISOString(),
     features: {
-      mongodb: dbStates[mongoose.connection.readyState] || 'Unknown',
-      cloudinary: 'Enabled',
+      awsDatabase: dbStates[mongoose.connection.readyState] || 'Unknown',
+      awsS3: 'Enabled',
       razorpay: 'Enabled',
       nodemailerOtp: 'Enabled',
       googleAuth: 'Enabled'

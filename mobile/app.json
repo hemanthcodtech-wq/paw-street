@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Paw Street",
+    "slug": "paw-street-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "pawstreet",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FAF7F2",
+    "primaryColor": "#FFB703",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pawstreet.app"
+    },
+    "android": {
+      "package": "com.pawstreet.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#FAF7F2",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

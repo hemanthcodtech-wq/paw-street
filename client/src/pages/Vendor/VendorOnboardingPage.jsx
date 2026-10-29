@@ -264,8 +264,9 @@ export default function VendorOnboardingPage() {
           return false;
         }
         return true;
-      case 3:
-        if (!formData.bankDetails?.accountHolderName || !formData.bankDetails?.bankName || !formData.bankDetails?.accountNumber || !formData.bankDetails?.ifscCode) {
+      case 3: {
+        const effectiveHolder = (formData.bankDetails?.accountHolderName || formData.fullName || '').trim();
+        if (!effectiveHolder || !formData.bankDetails?.bankName?.trim() || !formData.bankDetails?.accountNumber?.trim() || !formData.bankDetails?.ifscCode?.trim()) {
           alert('Please fill all required Bank details (Account Holder Name, Bank Name, Account Number, and IFSC Code) in Step 3.');
           return false;
         }
@@ -273,7 +274,17 @@ export default function VendorOnboardingPage() {
           alert('Bank Account Number and Confirm Account Number do not match.');
           return false;
         }
+        if (!formData.bankDetails.accountHolderName && effectiveHolder) {
+          setFormData(prev => ({
+            ...prev,
+            bankDetails: {
+              ...prev.bankDetails,
+              accountHolderName: effectiveHolder
+            }
+          }));
+        }
         return true;
+      }
       case 4:
         if (!formData.location.address || !formData.location.city || !formData.location.pincode) {
           alert('Please fill all required address fields in Step 4.');
@@ -297,7 +308,17 @@ export default function VendorOnboardingPage() {
         if (!validateStep(i)) return;
       }
     }
+    if (nextStep === 3 && !formData.bankDetails.accountHolderName && formData.fullName) {
+      setFormData(prev => ({
+        ...prev,
+        bankDetails: {
+          ...prev.bankDetails,
+          accountHolderName: prev.fullName
+        }
+      }));
+    }
     setCurrentStep(nextStep);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSubmitApplication = async (e) => {
@@ -312,7 +333,15 @@ export default function VendorOnboardingPage() {
     }
     
     try {
-      const submittedVendor = await submitOnboardingApplication(formData);
+      const effectiveHolder = (formData.bankDetails?.accountHolderName || formData.fullName || '').trim();
+      const payload = {
+        ...formData,
+        bankDetails: {
+          ...formData.bankDetails,
+          accountHolderName: effectiveHolder
+        }
+      };
+      const submittedVendor = await submitOnboardingApplication(payload);
       setSubmittedApplication(submittedVendor);
     } catch (err) {
       alert(err.message || 'Unable to submit onboarding application. Please try again.');

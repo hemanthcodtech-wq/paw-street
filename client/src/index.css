@@ -114,3 +114,28 @@ html {
   transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Universal outline removal across website inputs & buttons */
+input, textarea, select, button, [tabindex], [role="button"] {
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  box-shadow: none !important;
+}
+
+input:focus, textarea:focus, select:focus, button:focus,
+input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible {
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove Microsoft Edge & Chrome native password reveal eye icon */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+

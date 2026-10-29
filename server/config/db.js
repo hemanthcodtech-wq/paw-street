@@ -1,35 +1,58 @@
 const mongoose = require('mongoose');
+const path = require('path');
+const fs = require('fs');
 
-// Global cache to maintain connection across warm Vercel serverless invocations
+// Global cache to maintain connection across invocations
 let cached = global.mongoose;
 
 if (!cached) {
   cached = global.mongoose = { conn: null, promise: null };
 }
 
-const DEFAULT_MONGO_URI = 'mongodb+srv://hrzewotech:zewotech@zewo.yo2htvx.mongodb.net/pawstreet?retryWrites=true&w=majority';
-
+/**
+ * Connect to AWS Database (Amazon DocumentDB / AWS EC2 MongoDB)
+ */
 const connectDB = async () => {
   if (cached.conn && mongoose.connection.readyState === 1) {
     return cached.conn;
   }
 
   if (!cached.promise) {
-    const mongoUri = process.env.MONGO_URI || DEFAULT_MONGO_URI;
+    const mongoUri = process.env.MONGO_URI;
+
+    if (!mongoUri) {
+      console.error('❌ MONGO_URI is missing in server/.env');
+      return null;
+    }
+
+    const isAwsDocumentDB = mongoUri.includes('docdb.amazonaws.com') || process.env.DATABASE_PROVIDER === 'AWS_DOCUMENTDB';
+
     const opts = {
       bufferCommands: true,
       serverSelectionTimeoutMS: 10000,
-      autoIndex: false
+      autoIndex: false,
     };
+
+    // AWS DocumentDB TLS / Certificate support
+    if (isAwsDocumentDB) {
+      const caPath = process.env.AWS_DOCUMENTDB_CA_FILE || path.join(__dirname, '..', 'certs', 'global-bundle.pem');
+      if (fs.existsSync(caPath)) {
+        opts.tls = true;
+        opts.tlsCAFile = caPath;
+        console.log(`🔒 AWS DocumentDB: Loaded SSL CA certificate from ${caPath}`);
+      }
+    }
 
     cached.promise = mongoose.connect(mongoUri, opts)
       .then((conn) => {
-        console.log(`✅ MongoDB Connected Successfully: ${conn.connection.host}/${conn.connection.name}`);
+        const dbHost = conn.connection.host || 'AWS Server';
+        const dbName = conn.connection.name || 'pawstreet';
+        console.log(`✅ AWS Database Connected Successfully: ${dbHost}/${dbName}`);
         return conn;
       })
       .catch((error) => {
         cached.promise = null;
-        console.error(`❌ MongoDB Connection Failed: ${error.message}`);
+        console.error(`❌ AWS Database Connection Failed: ${error.message}`);
         throw error;
       });
   }
@@ -39,7 +62,7 @@ const connectDB = async () => {
     return cached.conn;
   } catch (error) {
     cached.promise = null;
-    console.warn('⚠️ MongoDB connection could not be established immediately.');
+    console.warn('⚠️ AWS Database connection could not be established immediately:', error.message);
     return null;
   }
 };

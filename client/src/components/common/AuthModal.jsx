@@ -97,67 +97,24 @@ export default function AuthModal() {
           {step === 'input' ? (
             <div className="space-y-4">
               
-              {/* Method Switcher Tabs */}
-              <div className="flex bg-slate-100 p-1 rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => setAuthMethod('phone')}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                    authMethod === 'phone' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <Smartphone className="w-3.5 h-3.5" />
-                  <span>Mobile OTP</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAuthMethod('email')}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                    authMethod === 'email' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <Mail className="w-3.5 h-3.5" />
-                  <span>Email ID</span>
-                </button>
-              </div>
-
               {/* Input Form */}
               <form onSubmit={handleSendOtp} className="space-y-3">
-                {authMethod === 'phone' ? (
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Enter Mobile Number
-                    </label>
-                    <div className="flex rounded-xl border border-slate-200 focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-200 overflow-hidden bg-slate-50">
-                      <span className="px-3 py-2.5 bg-slate-100 text-xs font-bold text-slate-600 border-r border-slate-200 flex items-center">
-                        🇮🇳 +91
-                      </span>
-                      <input
-                        type="tel"
-                        maxLength="10"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
-                        placeholder="98765 43210"
-                        className="w-full px-3 py-2.5 text-sm bg-transparent outline-none font-medium text-slate-900"
-                        required
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Enter Email Address
-                    </label>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Enter Email Address
+                  </label>
+                  <div className="flex items-center rounded-xl border border-slate-200 focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-200 overflow-hidden bg-slate-50 px-3 py-2.5">
+                    <Mail className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
                     <input
                       type="email"
                       value={emailAddress}
                       onChange={(e) => setEmailAddress(e.target.value)}
                       placeholder="alex.pawlover@gmail.com"
-                      className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none bg-slate-50"
+                      className="w-full text-sm bg-transparent outline-none font-medium text-slate-900"
                       required
                     />
                   </div>
-                )}
+                </div>
 
                 <button
                   type="submit"

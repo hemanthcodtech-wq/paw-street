@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Paw Street Partner",
+    "slug": "paw-street-partner",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "pawstreetpartner",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FAF7F2",
+    "primaryColor": "#FB8500",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pawstreet.partner"
+    },
+    "android": {
+      "package": "com.pawstreet.partner",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#FAF7F2"
+      }
+    },
+    "web": {
+      "favicon": "./assets/icon.png",
+      "bundler": "metro"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Paw Street",
+    "slug": "paw-street-user",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "pawstreetuser",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FAF7F2",
+    "primaryColor": "#FFB703",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pawstreet.user"
+    },
+    "android": {
+      "package": "com.pawstreet.user",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#FAF7F2"
+      }
+    },
+    "web": {
+      "favicon": "./assets/icon.png",
+      "bundler": "metro"
+    }
+  }
+}
