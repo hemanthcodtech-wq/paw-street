@@ -23,6 +23,12 @@
     "web": {
       "favicon": "./assets/icon.png",
       "bundler": "metro"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a0cfc98c-2eed-4791-bd02-adc761456107"
+      }
+    },
+    "owner": "student14"
   }
 }
