@@ -14,5 +14,6 @@ client/.env.development
 .DS_Store
 *.log
 *.pem
+*.jks
 .expo/
 ~/
