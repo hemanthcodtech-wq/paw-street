@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Image } from 'react-native';
 
-export default function BrandLogo({ size = 'large', subtitle = 'The Paw Street', dark = false }) {
+export default function BrandLogo({ size = 'large', subtitle = 'PAW NEAR', dark = false }) {
   const scaleAnim = useRef(new Animated.Value(0.75)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;

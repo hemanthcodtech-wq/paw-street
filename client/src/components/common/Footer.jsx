@@ -122,7 +122,7 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-1.5 text-slate-300">
                 <Mail className="w-3.5 h-3.5 text-amber-400" />
-                <span>support@thepawstreet.com</span>
+                <span>support@pawnear.in</span>
               </li>
             </ul>
           </div>
@@ -131,7 +131,7 @@ export default function Footer() {
 
       {/* Bottom copyright */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 border-t border-slate-800 text-center md:flex md:items-center md:justify-between text-xs text-slate-500">
-        <p>© 2026 The Paw Street / PAW NEAR. All rights reserved. Made for Happy Pets & Pet Parents.</p>
+        <p>© 2026 PAW NEAR. All rights reserved. Everything Your Pet Needs, Near You.</p>
         <p className="mt-2 md:mt-0 flex items-center justify-center gap-1">
           Made with <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 inline" /> for happy pets & pet parents.
         </p>

@@ -13,7 +13,7 @@ export default function Logo({ size = 'md', showText = true, className = '', to 
     <div className={`inline-flex items-center gap-2 select-none ${className}`}>
       <img
         src="/logo.png"
-        alt="PAW NEAR - The Paw Street"
+        alt="PAW NEAR"
         className={`w-auto object-contain transition-transform duration-200 group-hover:scale-105 ${imgSizeClasses[size]}`}
       />
     </div>

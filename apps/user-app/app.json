@@ -1,20 +1,20 @@
 {
   "expo": {
-    "name": "Paw Street",
-    "slug": "paw-street-user",
+    "name": "PAW NEAR",
+    "slug": "paw-near-user",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "pawstreetuser",
+    "scheme": "pawnearuser",
     "userInterfaceStyle": "light",
     "backgroundColor": "#FAF7F2",
     "primaryColor": "#FFB703",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.pawstreet.user"
+      "bundleIdentifier": "com.pawnear.user"
     },
     "android": {
-      "package": "com.pawstreet.user",
+      "package": "com.pawnear.user",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#FAF7F2"

@@ -23,7 +23,7 @@ export const PRODUCTS = [
     inStock: true,
     badge: 'BESTSELLER',
     deliveryTime: 'Today by 6 PM',
-    storeName: 'Paw Street Central Store',
+    storeName: 'PAW NEAR Central Store',
     image: 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=600&q=80',
     description: 'Complete nutritional formula specifically tailored for adult large breed dogs (26 to 44 kg). Supports optimal bone & joint health and promotes digestive performance with high-quality protein and balanced dietary fiber.',
     nutrition: ['Protein: 26%', 'Fat: 17%', 'Fiber: 1.3%', 'Omega-3 fatty acids: EPA/DHA']
@@ -63,7 +63,7 @@ export const PRODUCTS = [
     inStock: true,
     badge: 'PREMIUM',
     deliveryTime: 'Tomorrow Morning',
-    storeName: 'Paw Street Central Store',
+    storeName: 'PAW NEAR Central Store',
     image: 'https://images.unsplash.com/photo-1541599540903-216a46ca1dc0?auto=format&fit=crop&w=600&q=80',
     description: 'Ultra-soft therapeutic memory foam bed alleviating joint pressure points. Removable and machine-washable waterproof velvet cover with non-skid bottom.',
     nutrition: ['High-density Visco-elastic foam', 'Waterproof inner liner', 'Anti-skid bottom']
@@ -103,7 +103,7 @@ export const PRODUCTS = [
     inStock: true,
     badge: 'VET RECOMMENDED',
     deliveryTime: 'Today in 2 Hours',
-    storeName: 'Paw Street Central Store',
+    storeName: 'PAW NEAR Central Store',
     image: 'https://images.unsplash.com/photo-1535294435445-d7249524ef2e?auto=format&fit=crop&w=600&q=80',
     description: 'Clinically proven X-shape dental chew sticks. Reduces tartar build-up by up to 80% while freshening breath with natural active green tea ingredients.',
     nutrition: ['Zinc Sulfate', 'Sodium Tripolyphosphate', 'Low in fat']

@@ -312,14 +312,14 @@ const redirectWithBridge = (res, appTarget, params) => {
   const clientUrl = process.env.CLIENT_URL || 'https://pawnear.in';
 
   if (appTarget === 'user') {
-    const deepLink = `pawstreetuser://auth?${queryString}`;
+    const deepLink = `pawnearuser://auth?${queryString}`;
     const webFallback = `${clientUrl}/auth-bridge?${queryString}&app=user`;
     return res.send(`
       <!DOCTYPE html>
       <html>
         <head>
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <title>Redirecting to Paw Street App...</title>
+          <title>Redirecting to PAW NEAR App...</title>
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #FAF7F2; text-align: center; padding: 20px; }
             .card { background: white; padding: 32px 24px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); max-width: 360px; }
@@ -328,7 +328,7 @@ const redirectWithBridge = (res, appTarget, params) => {
         </head>
         <body>
           <div class="card">
-            <h2>🐾 Opening Paw Street App...</h2>
+            <h2>🐾 Opening PAW NEAR App...</h2>
             <p>If the app does not open automatically, tap below:</p>
             <a class="btn" href="${deepLink}">Open App</a>
           </div>
@@ -340,14 +340,14 @@ const redirectWithBridge = (res, appTarget, params) => {
       </html>
     `);
   } else if (appTarget === 'partner') {
-    const deepLink = `pawstreetpartner://auth?${queryString}`;
+    const deepLink = `pawnearpartner://auth?${queryString}`;
     const webFallback = `${clientUrl}/auth-bridge?${queryString}&app=partner`;
     return res.send(`
       <!DOCTYPE html>
       <html>
         <head>
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <title>Redirecting to Partner App...</title>
+          <title>Redirecting to PAW NEAR Partner App...</title>
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #FAF7F2; text-align: center; padding: 20px; }
             .card { background: white; padding: 32px 24px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); max-width: 360px; }
@@ -356,7 +356,7 @@ const redirectWithBridge = (res, appTarget, params) => {
         </head>
         <body>
           <div class="card">
-            <h2>🏬 Opening Partner App...</h2>
+            <h2>🏬 Opening PAW NEAR Partner App...</h2>
             <p>If the app does not open automatically, tap below:</p>
             <a class="btn" href="${deepLink}">Open Partner App</a>
           </div>

@@ -1,8 +1,8 @@
 export const SEED_VENDOR = {
   id: 'vnd-101',
-  storeName: 'Paw Street Central Store',
+  storeName: 'PAW NEAR Central Store',
   ownerName: 'Rajesh Sharma',
-  email: 'vendor@pawstreet.com',
+  email: 'vendor@pawnear.in',
   phone: '+91 98765 43210',
   role: 'vendor',
   status: 'active',
@@ -19,7 +19,7 @@ export const SEED_VENDOR = {
 export const SEED_DELIVERY_RIDER = {
   id: 'rid-202',
   name: 'Raju Kumar',
-  email: 'delivery@pawstreet.com',
+  email: 'delivery@pawnear.in',
   phone: '+91 98451 22334',
   role: 'delivery',
   status: 'active',

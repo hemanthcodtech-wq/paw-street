@@ -115,7 +115,7 @@ export default function AuthScreen({ navigation }) {
     <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
       {/* Brand Header */}
       <View style={styles.brandHeader}>
-        <BrandLogo size="small" subtitle="The Paw Street" dark={false} />
+        <BrandLogo size="small" subtitle="PAW NEAR" dark={false} />
       </View>
 
       {/* Main Auth Card */}
