@@ -24,11 +24,11 @@
       "favicon": "./assets/icon.png",
       "bundler": "metro"
     },
+    "owner": "student222",
     "extra": {
       "eas": {
-        "projectId": "3bbeb963-1861-41d5-a3e0-e43c36412ae4"
+        "projectId": "e9c252e8-5755-49fb-a19f-2eaa3be9016d"
       }
-    },
-    "owner": "student14"
+    }
   }
 }

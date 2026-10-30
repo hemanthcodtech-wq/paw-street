@@ -1,5 +1,8 @@
 node_modules
+**/node_modules
 client/node_modules
+apps/user-app/node_modules
+apps/partner-app/node_modules
 client/dist
 .env
 .env.local
