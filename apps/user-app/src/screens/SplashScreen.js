@@ -29,7 +29,7 @@ export default function SplashScreen({ navigation }) {
 
       {/* Animated Brand Logo */}
       <View style={styles.logoWrapper}>
-        <BrandLogo size="large" subtitle="The Paw Street" dark={false} />
+        <BrandLogo size="large" subtitle="Paw Near User" dark={false} />
       </View>
 
       <Text style={styles.tagline}>Premium Care for Your Furry Family</Text>

@@ -29,7 +29,7 @@ export default function SplashScreen({ navigation }) {
 
       {/* Animated Brand Logo in Exact Logo Colors on White */}
       <View style={styles.logoWrapper}>
-        <BrandLogo size="large" subtitle="Partner Portal" dark={false} />
+        <BrandLogo size="large" subtitle="Paw Near Partner" dark={false} />
       </View>
 
       <Text style={styles.title}>Vendor & Fleet Operations</Text>

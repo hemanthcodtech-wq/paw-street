@@ -189,27 +189,6 @@ export default function VendorAuthScreen({ navigation }) {
             : 'Register your pet shop, clinic, spa or boarding with verified KYC'}
         </Text>
 
-        {/* Sub-mode Switcher */}
-        <View style={styles.subModeRow}>
-          <TouchableOpacity
-            style={[styles.subModeTab, mode === 'signin' && styles.subModeTabActive]}
-            onPress={() => setMode('signin')}
-          >
-            <Text style={[styles.subModeText, mode === 'signin' && styles.subModeTextActive]}>
-              Vendor Sign In
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.subModeTab, mode === 'signup' && styles.subModeTabActive]}
-            onPress={() => setMode('signup')}
-          >
-            <Text style={[styles.subModeText, mode === 'signup' && styles.subModeTextActive]}>
-              Register Store (Onboarding)
-            </Text>
-          </TouchableOpacity>
-        </View>
-
         {/* -------------------- 1. VENDOR SIGN IN -------------------- */}
         {mode === 'signin' && (
           <View style={styles.formSection}>
