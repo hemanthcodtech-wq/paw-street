@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Image } from 'react-native';
 
+const logoAsset = require('../../assets/logo.png');
+
 export default function BrandLogo({ size = 'large', subtitle = 'PAW NEAR', dark = false }) {
   const scaleAnim = useRef(new Animated.Value(0.75)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -54,7 +56,7 @@ export default function BrandLogo({ size = 'large', subtitle = 'PAW NEAR', dark 
         <View style={styles.haloGlow} />
         <View style={[styles.logoCard, isSmall && styles.logoCardSmall]}>
           <Image
-            source={{ uri: '/logo.png' }}
+            source={logoAsset}
             style={[styles.logoImage, isSmall ? styles.logoImageSmall : styles.logoImageLarge]}
             resizeMode="contain"
           />
