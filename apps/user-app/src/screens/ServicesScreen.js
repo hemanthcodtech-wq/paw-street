@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Modal, Alert
 import { Ionicons } from '@expo/vector-icons';
 import { SERVICES } from '../data/mockData';
 import { colors } from '../theme/colors';
+import SafeScreen from '../components/SafeScreen';
 
 export default function ServicesScreen() {
   const [selectedService, setSelectedService] = useState(null);
@@ -19,7 +20,8 @@ export default function ServicesScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeScreen backgroundColor={colors.background}>
+      <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Pet Wellness & Services</Text>
         <Text style={styles.headerSubtitle}>Verified Groomers, Doctors, Walkers & Boarding</Text>
@@ -88,6 +90,7 @@ export default function ServicesScreen() {
         </View>
       </Modal>
     </View>
+    </SafeScreen>
   );
 }
 

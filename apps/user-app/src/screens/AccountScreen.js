@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useOrder } from '../context/OrderContext';
 import { colors } from '../theme/colors';
+import SafeScreen from '../components/SafeScreen';
 
 export default function AccountScreen({ navigation }) {
   const { user, isLoggedIn, logout, pets, addPet } = useAuth();
@@ -35,7 +36,8 @@ export default function AccountScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <SafeScreen backgroundColor={colors.background}>
+      <ScrollView style={styles.container}>
       {/* Profile Header */}
       <View style={styles.profileHeader}>
         <Image
@@ -203,6 +205,7 @@ export default function AccountScreen({ navigation }) {
 
       <View style={{ height: 40 }} />
     </ScrollView>
+    </SafeScreen>
   );
 }
 

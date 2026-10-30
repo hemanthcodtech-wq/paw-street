@@ -3,10 +3,12 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import BrandLogo from '../../components/BrandLogo';
 import { colors } from '../../theme/colors';
+import SafeScreen from '../../components/SafeScreen';
 
 export default function PartnerWelcomeScreen({ navigation }) {
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <SafeScreen backgroundColor="#FAF7F2">
+      <ScrollView contentContainerStyle={styles.container}>
       {/* Decorative Glow */}
       <View style={styles.glowTop} />
 
@@ -58,6 +60,7 @@ export default function PartnerWelcomeScreen({ navigation }) {
         <Text style={styles.footerText}>Secure 256-bit encrypted partner access</Text>
       </View>
     </ScrollView>
+    </SafeScreen>
   );
 }
 

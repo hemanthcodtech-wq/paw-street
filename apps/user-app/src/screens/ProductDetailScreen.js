@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { useCart } from '../context/CartContext';
 import { colors } from '../theme/colors';
+import SafeScreen from '../components/SafeScreen';
 
 export default function ProductDetailScreen({ route, navigation }) {
   const { product } = route.params;
@@ -10,7 +11,8 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [qty, setQty] = useState(1);
 
   return (
-    <View style={styles.container}>
+    <SafeScreen backgroundColor={colors.background}>
+      <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Top Header Buttons */}
         <View style={styles.header}>
@@ -118,6 +120,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
     </View>
+    </SafeScreen>
   );
 }
 

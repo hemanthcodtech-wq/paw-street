@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { PET_CATEGORIES, PRODUCTS, SERVICES } from '../data/mockData';
 import { colors } from '../theme/colors';
+import SafeScreen from '../components/SafeScreen';
 
 export default function HomeScreen({ navigation }) {
   const { user, selectedLocation, pets } = useAuth();
@@ -19,7 +20,8 @@ export default function HomeScreen({ navigation }) {
   });
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <SafeScreen backgroundColor={colors.background}>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Top Address & Location Header */}
       <View style={styles.topHeader}>
         <View style={styles.locationWrapper}>
@@ -203,6 +205,7 @@ export default function HomeScreen({ navigation }) {
 
       <View style={{ height: 40 }} />
     </ScrollView>
+    </SafeScreen>
   );
 }
 

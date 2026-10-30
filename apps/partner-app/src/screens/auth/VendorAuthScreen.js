@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { usePartnerAuth } from '../../context/PartnerAuthContext';
 import BrandLogo from '../../components/BrandLogo';
 import { colors } from '../../theme/colors';
+import SafeScreen from '../../components/SafeScreen';
 
 export default function VendorAuthScreen({ navigation }) {
   const { switchRole, loginPartner, registerPartner, loginPartnerWithTokenAndUser } = usePartnerAuth();
@@ -157,7 +158,8 @@ export default function VendorAuthScreen({ navigation }) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+    <SafeScreen backgroundColor="#FAF7F2">
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
       {/* Top Header with Back Navigation */}
       <View style={styles.topNavRow}>
         <TouchableOpacity
@@ -490,6 +492,7 @@ export default function VendorAuthScreen({ navigation }) {
 
       <View style={{ height: 40 }} />
     </ScrollView>
+    </SafeScreen>
   );
 }
 

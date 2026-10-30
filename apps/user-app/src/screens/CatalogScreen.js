@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { PRODUCTS, PET_CATEGORIES } from '../data/mockData';
 import { useCart } from '../context/CartContext';
 import { colors } from '../theme/colors';
+import SafeScreen from '../components/SafeScreen';
 
 export default function CatalogScreen({ navigation }) {
   const { addToCart } = useCart();
@@ -22,7 +23,8 @@ export default function CatalogScreen({ navigation }) {
   });
 
   return (
-    <View style={styles.container}>
+    <SafeScreen backgroundColor={colors.background}>
+      <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Pet Store & Supplies</Text>
@@ -137,6 +139,7 @@ export default function CatalogScreen({ navigation }) {
         )}
       />
     </View>
+    </SafeScreen>
   );
 }
 

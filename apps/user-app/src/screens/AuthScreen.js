@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import BrandLogo from '../components/BrandLogo';
 import { colors } from '../theme/colors';
+import SafeScreen from '../components/SafeScreen';
 
 export default function AuthScreen({ navigation }) {
   const { login, register, loginWithTokenAndUser } = useAuth();
@@ -112,7 +113,8 @@ export default function AuthScreen({ navigation }) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+    <SafeScreen backgroundColor="#FAF7F2">
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
       {/* Brand Header */}
       <View style={styles.brandHeader}>
         <BrandLogo size="small" subtitle="PAW NEAR" dark={false} />
@@ -308,6 +310,7 @@ export default function AuthScreen({ navigation }) {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </SafeScreen>
   );
 }
 

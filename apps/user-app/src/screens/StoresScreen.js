@@ -3,10 +3,12 @@ import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity } from 'react
 import { Ionicons } from '@expo/vector-icons';
 import { STORES } from '../data/mockData';
 import { colors } from '../theme/colors';
+import SafeScreen from '../components/SafeScreen';
 
 export default function StoresScreen({ navigation }) {
   return (
-    <View style={styles.container}>
+    <SafeScreen backgroundColor={colors.background}>
+      <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Nearby Pet Stores</Text>
         <Text style={styles.headerSubtitle}>Verified local shops offering 15-minute delivery & pickup</Text>
@@ -59,6 +61,7 @@ export default function StoresScreen({ navigation }) {
         )}
       />
     </View>
+    </SafeScreen>
   );
 }
 

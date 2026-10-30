@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -85,10 +85,14 @@ function CustomPartnerTabBar({ state, descriptors, navigation, activeThemeColor 
 }
 
 function VendorTabNavigator() {
+  const insets = useSafeAreaInsets();
+  const topInset = Platform.OS === 'web' ? 0 : Math.max(insets.top, Platform.OS === 'android' ? ((RNStatusBar.currentHeight || 28) + 6) : 0);
+
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomPartnerTabBar {...props} activeThemeColor={colors.vendor} />}
       screenOptions={{ headerShown: false }}
+      sceneContainerStyle={{ paddingTop: topInset, backgroundColor: '#FAF7F2' }}
     >
       <Tab.Screen name="VendorHomeTab" component={VendorDashboardScreen} options={{ tabBarLabel: 'Dashboard' }} />
       <Tab.Screen name="OrdersTab" component={VendorOrdersScreen} options={{ tabBarLabel: 'Orders' }} />
@@ -100,10 +104,14 @@ function VendorTabNavigator() {
 }
 
 function DeliveryTabNavigator() {
+  const insets = useSafeAreaInsets();
+  const topInset = Platform.OS === 'web' ? 0 : Math.max(insets.top, Platform.OS === 'android' ? ((RNStatusBar.currentHeight || 28) + 6) : 0);
+
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomPartnerTabBar {...props} activeThemeColor={colors.delivery} />}
       screenOptions={{ headerShown: false }}
+      sceneContainerStyle={{ paddingTop: topInset, backgroundColor: '#FAF7F2' }}
     >
       <Tab.Screen name="DutyTab" component={DeliveryDashboardScreen} options={{ tabBarLabel: 'Duty Hub' }} />
       <Tab.Screen name="ActiveDeliveryTab" component={ActiveDeliveryScreen} options={{ tabBarLabel: 'Active Trip' }} />

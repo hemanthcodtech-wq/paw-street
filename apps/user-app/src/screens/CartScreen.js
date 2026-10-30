@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, TextInput } 
 import { Ionicons } from '@expo/vector-icons';
 import { useCart } from '../context/CartContext';
 import { colors } from '../theme/colors';
+import SafeScreen from '../components/SafeScreen';
 
 export default function CartScreen({ navigation }) {
   const {
@@ -34,24 +35,27 @@ export default function CartScreen({ navigation }) {
 
   if (cartItems.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
-        <View style={styles.emptyCircle}>
-          <Ionicons name="bag-handle-outline" size={48} color={colors.primaryDark} />
+      <SafeScreen backgroundColor={colors.background}>
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyCircle}>
+            <Ionicons name="bag-handle-outline" size={48} color={colors.primaryDark} />
+          </View>
+          <Text style={styles.emptyTitle}>Your Pet Cart is Empty</Text>
+          <Text style={styles.emptySubtitle}>Give your pet the treats, food, and toys they love!</Text>
+          <TouchableOpacity
+            style={styles.shopNowBtn}
+            onPress={() => navigation.navigate('CatalogTab')}
+          >
+            <Text style={styles.shopNowText}>Start Shopping</Text>
+          </TouchableOpacity>
         </View>
-        <Text style={styles.emptyTitle}>Your Pet Cart is Empty</Text>
-        <Text style={styles.emptySubtitle}>Give your pet the treats, food, and toys they love!</Text>
-        <TouchableOpacity
-          style={styles.shopNowBtn}
-          onPress={() => navigation.navigate('CatalogTab')}
-        >
-          <Text style={styles.shopNowText}>Start Shopping</Text>
-        </TouchableOpacity>
-      </View>
+      </SafeScreen>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeScreen backgroundColor={colors.background}>
+      <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Your Cart ({cartItems.length})</Text>
         <View style={styles.deliveryBadge}>
@@ -163,6 +167,7 @@ export default function CartScreen({ navigation }) {
         </TouchableOpacity>
       </View>
     </View>
+    </SafeScreen>
   );
 }
 

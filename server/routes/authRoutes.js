@@ -313,60 +313,12 @@ const redirectWithBridge = (res, appTarget, params) => {
 
   if (appTarget === 'user') {
     const deepLink = `pawnearuser://auth?${queryString}`;
-    const webFallback = `${clientUrl}/auth-bridge?${queryString}&app=user`;
-    return res.send(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <title>Redirecting to PAW NEAR App...</title>
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #FAF7F2; text-align: center; padding: 20px; }
-            .card { background: white; padding: 32px 24px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); max-width: 360px; }
-            .btn { display: inline-block; margin-top: 16px; background: #FFB703; color: #0F172A; padding: 12px 24px; border-radius: 12px; font-weight: bold; text-decoration: none; }
-          </style>
-        </head>
-        <body>
-          <div class="card">
-            <h2>🐾 Opening PAW NEAR App...</h2>
-            <p>If the app does not open automatically, tap below:</p>
-            <a class="btn" href="${deepLink}">Open App</a>
-          </div>
-          <script>
-            window.location.href = "${deepLink}";
-            setTimeout(function() { window.location.href = "${webFallback}"; }, 2000);
-          </script>
-        </body>
-      </html>
-    `);
+    res.set('Location', deepLink);
+    return res.status(302).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${deepLink}"><script>window.location.replace("${deepLink}");</script></head><body style="background:#FAF7F2;margin:0;"><script>window.location.href="${deepLink}";</script></body></html>`);
   } else if (appTarget === 'partner') {
     const deepLink = `pawnearpartner://auth?${queryString}`;
-    const webFallback = `${clientUrl}/auth-bridge?${queryString}&app=partner`;
-    return res.send(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <title>Redirecting to PAW NEAR Partner App...</title>
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #FAF7F2; text-align: center; padding: 20px; }
-            .card { background: white; padding: 32px 24px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); max-width: 360px; }
-            .btn { display: inline-block; margin-top: 16px; background: #FB8500; color: white; padding: 12px 24px; border-radius: 12px; font-weight: bold; text-decoration: none; }
-          </style>
-        </head>
-        <body>
-          <div class="card">
-            <h2>🏬 Opening PAW NEAR Partner App...</h2>
-            <p>If the app does not open automatically, tap below:</p>
-            <a class="btn" href="${deepLink}">Open Partner App</a>
-          </div>
-          <script>
-            window.location.href = "${deepLink}";
-            setTimeout(function() { window.location.href = "${webFallback}"; }, 2000);
-          </script>
-        </body>
-      </html>
-    `);
+    res.set('Location', deepLink);
+    return res.status(302).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${deepLink}"><script>window.location.replace("${deepLink}");</script></head><body style="background:#FAF7F2;margin:0;"><script>window.location.href="${deepLink}";</script></body></html>`);
   } else {
     return res.redirect(`${clientUrl}/auth-bridge?${queryString}`);
   }
@@ -425,6 +377,8 @@ router.get('/google/callback', async (req, res) => {
 
     try {
       const clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
+      console.log('Exchanging Google code with redirect_uri:', callbackUrl);
+
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -437,8 +391,22 @@ router.get('/google/callback', async (req, res) => {
         })
       });
       const tokenData = await tokenResponse.json();
+      console.log('Google token response status:', tokenResponse.status, 'has_id_token:', !!tokenData.id_token, 'error:', tokenData.error);
 
-      if (tokenData.access_token) {
+      if (tokenData.id_token) {
+        try {
+          const decoded = jwt.decode(tokenData.id_token);
+          if (decoded) {
+            email = decoded.email;
+            name = decoded.name;
+            picture = decoded.picture;
+          }
+        } catch (jwtErr) {
+          console.warn('ID token decode error:', jwtErr.message);
+        }
+      }
+
+      if (!email && tokenData.access_token) {
         const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
           headers: { Authorization: `Bearer ${tokenData.access_token}` }
         });
@@ -447,6 +415,13 @@ router.get('/google/callback', async (req, res) => {
         name = userInfo.name;
         picture = userInfo.picture;
       }
+
+      if (!email && tokenData.error) {
+        return redirectWithBridge(res, app, {
+          status: 'error',
+          message: tokenData.error_description || tokenData.error || 'Google authentication failed.'
+        });
+      }
     } catch (fetchErr) {
       console.warn('OAuth token exchange error:', fetchErr.message);
     }
@@ -454,7 +429,7 @@ router.get('/google/callback', async (req, res) => {
     if (!email) {
       return redirectWithBridge(res, app, {
         status: 'error',
-        message: 'Could not retrieve Google profile email.'
+        message: 'Could not retrieve Google profile email. Please ensure your Google account is verified.'
       });
     }
 
