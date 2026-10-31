@@ -93,6 +93,7 @@ function VendorTabNavigator() {
       tabBar={(props) => <CustomPartnerTabBar {...props} activeThemeColor={colors.vendor} />}
       screenOptions={{ headerShown: false }}
       sceneContainerStyle={{ paddingTop: topInset, backgroundColor: '#FAF7F2' }}
+      backBehavior="history"
     >
       <Tab.Screen name="VendorHomeTab" component={VendorDashboardScreen} options={{ tabBarLabel: 'Dashboard' }} />
       <Tab.Screen name="OrdersTab" component={VendorOrdersScreen} options={{ tabBarLabel: 'Orders' }} />
@@ -112,6 +113,7 @@ function DeliveryTabNavigator() {
       tabBar={(props) => <CustomPartnerTabBar {...props} activeThemeColor={colors.delivery} />}
       screenOptions={{ headerShown: false }}
       sceneContainerStyle={{ paddingTop: topInset, backgroundColor: '#FAF7F2' }}
+      backBehavior="history"
     >
       <Tab.Screen name="DutyTab" component={DeliveryDashboardScreen} options={{ tabBarLabel: 'Duty Hub' }} />
       <Tab.Screen name="ActiveDeliveryTab" component={ActiveDeliveryScreen} options={{ tabBarLabel: 'Active Trip' }} />

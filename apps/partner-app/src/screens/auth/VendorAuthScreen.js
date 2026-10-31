@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Linking, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePartnerAuth } from '../../context/PartnerAuthContext';
-import BrandLogo from '../../components/BrandLogo';
 import { colors } from '../../theme/colors';
 import SafeScreen from '../../components/SafeScreen';
 
@@ -173,11 +172,6 @@ export default function VendorAuthScreen({ navigation }) {
           <Ionicons name="storefront" size={14} color="#FB8500" />
           <Text style={styles.roleBadgeText}>STORE VENDOR</Text>
         </View>
-      </View>
-
-      {/* Brand Logo Header */}
-      <View style={styles.brandHeader}>
-        <BrandLogo size="small" subtitle="Vendor Operations" dark={false} />
       </View>
 
       {/* Card */}

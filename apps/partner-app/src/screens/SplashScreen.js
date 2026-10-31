@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
-import BrandLogo from '../components/BrandLogo';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Image } from 'react-native';
 import { colors } from '../theme/colors';
 
 export default function SplashScreen({ navigation }) {
@@ -27,9 +26,13 @@ export default function SplashScreen({ navigation }) {
       <View style={styles.glowTop} />
       <View style={styles.glowBottom} />
 
-      {/* Animated Brand Logo in Exact Logo Colors on White */}
+      {/* Brand Logo */}
       <View style={styles.logoWrapper}>
-        <BrandLogo size="large" subtitle="Paw Near Partner" dark={false} />
+        <Image
+          source={require('../../assets/splash-logo.png')}
+          style={styles.splashLogo}
+          resizeMode="contain"
+        />
       </View>
 
       <Text style={styles.title}>Vendor & Fleet Operations</Text>
@@ -81,6 +84,12 @@ const styles = StyleSheet.create({
   },
   logoWrapper: {
     marginBottom: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  splashLogo: {
+    width: 220,
+    height: 220,
   },
   title: {
     fontSize: 18,

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Platform, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
-import BrandLogo from '../components/BrandLogo';
 import { colors } from '../theme/colors';
 import SafeScreen from '../components/SafeScreen';
 
@@ -115,11 +114,6 @@ export default function AuthScreen({ navigation }) {
   return (
     <SafeScreen backgroundColor="#FAF7F2">
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-      {/* Brand Header */}
-      <View style={styles.brandHeader}>
-        <BrandLogo size="small" subtitle="PAW NEAR" dark={false} />
-      </View>
-
       {/* Main Auth Card */}
       <View style={styles.card}>
         <Text style={styles.cardHeading}>

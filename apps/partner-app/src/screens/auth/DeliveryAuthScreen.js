@@ -2,31 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Linking, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePartnerAuth } from '../../context/PartnerAuthContext';
-import BrandLogo from '../../components/BrandLogo';
 import { colors } from '../../theme/colors';
 import SafeScreen from '../../components/SafeScreen';
 
 export default function DeliveryAuthScreen({ navigation }) {
-  const { switchRole, loginPartner, registerPartner, loginPartnerWithTokenAndUser } = usePartnerAuth();
+  const { switchRole, loginPartner, loginPartnerWithTokenAndUser } = usePartnerAuth();
 
-  // Mode: 'signin' | 'signup'
-  const [mode, setMode] = useState('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  // Delivery Partner Registration State
-  const [riderForm, setRiderForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    password: '',
-    vehicleType: 'EV Scooter',
-    vehicleNumber: '',
-    drivingLicense: '',
-    zone: 'Banjara Hills & Jubilee Hills',
-  });
 
   // Deep Link listener for Google Auth Bridge
   useEffect(() => {
@@ -112,33 +97,6 @@ export default function DeliveryAuthScreen({ navigation }) {
     }
   };
 
-  const handleRiderSubmit = async () => {
-    if (!riderForm.name || !riderForm.phone || !riderForm.vehicleNumber) {
-      Alert.alert('Required Fields', 'Please complete your name, phone, and vehicle registration number.');
-      return;
-    }
-    setLoading(true);
-    try {
-      await switchRole('delivery');
-      await registerPartner(
-        {
-          name: riderForm.name,
-          email: riderForm.email,
-          phone: riderForm.phone,
-          vehicleType: riderForm.vehicleType,
-          vehicleNumber: riderForm.vehicleNumber,
-        },
-        'delivery'
-      );
-      Alert.alert('Fleet KYC Approved! 🛵', 'Your rider captain account is active. Welcome to Paw Fleet!');
-      navigation.replace('MainTabs');
-    } catch (e) {
-      Alert.alert('Registration Error', e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <SafeScreen backgroundColor="#FAF7F2">
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -157,221 +115,69 @@ export default function DeliveryAuthScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Brand Logo Header */}
-      <View style={styles.brandHeader}>
-        <BrandLogo size="small" subtitle="Fleet Operations" dark={false} />
-      </View>
-
-      {/* Card */}
+      {/* Main Sign In Card */}
       <View style={styles.card}>
-        <Text style={styles.cardHeading}>
-          {mode === 'signin' ? 'Delivery Captain Sign In' : 'Rider Fleet Registration'}
-        </Text>
+        <Text style={styles.cardHeading}>Delivery Captain Sign In</Text>
         <Text style={styles.cardSubtitle}>
-          {mode === 'signin'
-            ? 'Sign in to access your duty toggle, live trips pool & wallet'
-            : 'Join our verified electric & express pet delivery fleet'}
+          Sign in to access your duty toggle, live trips pool & wallet
         </Text>
 
-        {/* Sub-mode Switcher */}
-        <View style={styles.subModeRow}>
+        <View style={styles.formSection}>
+          <Text style={styles.label}>Registered Rider Email</Text>
+          <View style={styles.inputBox}>
+            <Ionicons name="mail-outline" size={18} color="#64748B" style={{ marginRight: 8 }} />
+            <TextInput
+              style={styles.input}
+              placeholder="delivery@pawstreet.com"
+              placeholderTextColor="#94A3B8"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+            />
+          </View>
+
+          <Text style={styles.label}>Password</Text>
+          <View style={styles.inputBox}>
+            <Ionicons name="lock-closed-outline" size={18} color="#64748B" style={{ marginRight: 8 }} />
+            <TextInput
+              style={styles.input}
+              placeholder="••••••••"
+              placeholderTextColor="#94A3B8"
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <Ionicons name={showPassword ? "eye-off" : "eye"} size={18} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Forgot Password */}
           <TouchableOpacity
-            style={[styles.subModeTab, mode === 'signin' && styles.subModeTabActive]}
-            onPress={() => setMode('signin')}
+            style={{ alignSelf: 'flex-end', marginTop: 8, marginBottom: 16 }}
+            onPress={() => {
+              Alert.alert(
+                'Forgot Password',
+                'Your delivery captain credentials are created and managed by your store vendor. Please contact your vendor administrator to reset your password.'
+              );
+            }}
           >
-            <Text style={[styles.subModeText, mode === 'signin' && styles.subModeTextActive]}>
-              Captain Sign In
+            <Text style={{ fontSize: 12, fontWeight: '700', color: '#059669' }}>
+              Forgot Password?
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.subModeTab, mode === 'signup' && styles.subModeTabActive]}
-            onPress={() => setMode('signup')}
+            style={styles.submitBtnDelivery}
+            onPress={handleRiderLogin}
+            disabled={loading}
           >
-            <Text style={[styles.subModeText, mode === 'signup' && styles.subModeTextActive]}>
-              Rider Registration
+            <Text style={styles.submitBtnText}>
+              {loading ? 'Accessing Hub...' : 'Sign In as Delivery Captain'}
             </Text>
           </TouchableOpacity>
         </View>
-
-        {/* -------------------- 1. RIDER SIGN IN -------------------- */}
-        {mode === 'signin' && (
-          <View style={styles.formSection}>
-            <Text style={styles.label}>Registered Rider Email</Text>
-            <View style={styles.inputBox}>
-              <Ionicons name="mail-outline" size={18} color="#64748B" style={{ marginRight: 8 }} />
-              <TextInput
-                style={styles.input}
-                placeholder="delivery@pawstreet.com"
-                placeholderTextColor="#94A3B8"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-              />
-            </View>
-
-            <Text style={styles.label}>Password</Text>
-            <View style={styles.inputBox}>
-              <Ionicons name="lock-closed-outline" size={18} color="#64748B" style={{ marginRight: 8 }} />
-              <TextInput
-                style={styles.input}
-                placeholder="••••••••"
-                placeholderTextColor="#94A3B8"
-                secureTextEntry={!showPassword}
-                value={password}
-                onChangeText={setPassword}
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons name={showPassword ? "eye-off" : "eye"} size={18} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity
-              style={styles.submitBtnDelivery}
-              onPress={handleRiderLogin}
-              disabled={loading}
-            >
-              <Text style={styles.submitBtnText}>
-                {loading ? 'Accessing Hub...' : 'Sign In as Delivery Captain'}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Google Sign In Option */}
-            <View style={styles.orDividerRow}>
-              <View style={styles.orDividerLine} />
-              <Text style={styles.orDividerText}>OR</Text>
-              <View style={styles.orDividerLine} />
-            </View>
-
-            <TouchableOpacity
-              style={styles.googleBtn}
-              onPress={handleGoogleSignIn}
-              disabled={loading}
-            >
-              <Ionicons name="logo-google" size={18} color="#EA4335" style={{ marginRight: 8 }} />
-              <Text style={styles.googleBtnText}>Continue with Google</Text>
-            </TouchableOpacity>
-
-
-            <TouchableOpacity
-              style={styles.switchModeFooter}
-              onPress={() => setMode('signup')}
-            >
-              <Text style={styles.switchModeMuted}>New Delivery Partner? </Text>
-              <Text style={styles.switchModeAction}>Join Delivery Fleet</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* -------------------- 2. RIDER REGISTRATION -------------------- */}
-        {mode === 'signup' && (
-          <View style={styles.formSection}>
-            <View style={styles.sectionBadge}>
-              <Text style={styles.sectionBadgeText}>RIDER PROFILE & VEHICLE KYC</Text>
-            </View>
-
-            <Text style={styles.label}>Captain Full Legal Name *</Text>
-            <TextInput
-              style={styles.inputSimple}
-              placeholder="e.g. Raju Kumar"
-              placeholderTextColor="#94A3B8"
-              value={riderForm.name}
-              onChangeText={(val) => setRiderForm({ ...riderForm, name: val })}
-            />
-
-            <Text style={styles.label}>Mobile Phone Number *</Text>
-            <TextInput
-              style={styles.inputSimple}
-              placeholder="e.g. +91 98451 22334"
-              placeholderTextColor="#94A3B8"
-              keyboardType="phone-pad"
-              value={riderForm.phone}
-              onChangeText={(val) => setRiderForm({ ...riderForm, phone: val })}
-            />
-
-            <Text style={styles.label}>Email Address *</Text>
-            <TextInput
-              style={styles.inputSimple}
-              placeholder="e.g. rider@pawstreet.com"
-              placeholderTextColor="#94A3B8"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={riderForm.email}
-              onChangeText={(val) => setRiderForm({ ...riderForm, email: val })}
-            />
-
-            <Text style={styles.label}>Account Password *</Text>
-            <TextInput
-              style={styles.inputSimple}
-              placeholder="••••••••"
-              placeholderTextColor="#94A3B8"
-              secureTextEntry
-              value={riderForm.password}
-              onChangeText={(val) => setRiderForm({ ...riderForm, password: val })}
-            />
-
-            <Text style={styles.label}>Vehicle Type</Text>
-            <View style={styles.typeSelectorRow}>
-              {['EV Scooter', 'Motorcycle', 'Bicycle'].map((vType) => (
-                <TouchableOpacity
-                  key={vType}
-                  style={[styles.typeChip, riderForm.vehicleType === vType && styles.typeChipActive]}
-                  onPress={() => setRiderForm({ ...riderForm, vehicleType: vType })}
-                >
-                  <Text style={[styles.typeChipText, riderForm.vehicleType === vType && styles.typeChipTextActive]}>
-                    {vType}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={styles.label}>Vehicle Registration Number *</Text>
-            <TextInput
-              style={styles.inputSimple}
-              placeholder="e.g. TS 09 EQ 4421"
-              placeholderTextColor="#94A3B8"
-              autoCapitalize="characters"
-              value={riderForm.vehicleNumber}
-              onChangeText={(val) => setRiderForm({ ...riderForm, vehicleNumber: val })}
-            />
-
-            <Text style={styles.label}>Driving License KYC Number</Text>
-            <TextInput
-              style={styles.inputSimple}
-              placeholder="e.g. DL-0420190021345"
-              placeholderTextColor="#94A3B8"
-              autoCapitalize="characters"
-              value={riderForm.drivingLicense}
-              onChangeText={(val) => setRiderForm({ ...riderForm, drivingLicense: val })}
-            />
-
-            <Text style={styles.label}>Operating Delivery Zone</Text>
-            <TextInput
-              style={styles.inputSimple}
-              value={riderForm.zone}
-              onChangeText={(val) => setRiderForm({ ...riderForm, zone: val })}
-            />
-
-            <TouchableOpacity
-              style={styles.submitBtnDelivery}
-              onPress={handleRiderSubmit}
-              disabled={loading}
-            >
-              <Text style={styles.submitBtnText}>
-                {loading ? 'Registering...' : 'Register as Delivery Captain'}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.switchModeFooter}
-              onPress={() => setMode('signin')}
-            >
-              <Text style={styles.switchModeMuted}>Already registered? </Text>
-              <Text style={[styles.switchModeAction, { color: '#059669' }]}>Captain Sign In</Text>
-            </TouchableOpacity>
-          </View>
-        )}
       </View>
 
       <View style={{ height: 40 }} />

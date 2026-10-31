@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import BrandLogo from '../../components/BrandLogo';
 import { colors } from '../../theme/colors';
 import SafeScreen from '../../components/SafeScreen';
 
@@ -9,14 +8,6 @@ export default function PartnerWelcomeScreen({ navigation }) {
   return (
     <SafeScreen backgroundColor="#FAF7F2">
       <ScrollView contentContainerStyle={styles.container}>
-      {/* Decorative Glow */}
-      <View style={styles.glowTop} />
-
-      {/* Brand Header */}
-      <View style={styles.brandHeader}>
-        <BrandLogo size="large" subtitle="Partner Portal" dark={false} />
-      </View>
-
       <Text style={styles.mainTitle}>Welcome, Business Partner</Text>
       <Text style={styles.subTitle}>Select your role to access your dedicated portal</Text>
 

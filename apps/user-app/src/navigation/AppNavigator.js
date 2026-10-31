@@ -106,6 +106,7 @@ function MainTabNavigator() {
     <Tab.Navigator
       tabBar={(props) => <CustomBottomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
+      backBehavior="history"
     >
       <Tab.Screen name="HomeTab" component={HomeScreen} options={{ tabBarLabel: 'Home' }} />
       <Tab.Screen name="CatalogTab" component={CatalogScreen} options={{ tabBarLabel: 'Shop' }} />
