@@ -3,15 +3,42 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput,
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { PET_CATEGORIES, PRODUCTS, SERVICES } from '../data/mockData';
+import { PET_CATEGORIES, PRODUCTS, SERVICES, STORES } from '../data/mockData';
 import { colors } from '../theme/colors';
 import SafeScreen from '../components/SafeScreen';
+import LocationPinModal from '../components/LocationPinModal';
+import { haversineDistanceKm } from '../services/geocoding';
 
 export default function HomeScreen({ navigation }) {
-  const { user, selectedLocation, pets } = useAuth();
+  const {
+    user,
+    selectedLocation,
+    pets,
+    hasPinnedLocation,
+    isLocationModalOpen,
+    openLocationModal,
+    closeLocationModal
+  } = useAuth();
   const { addToCart } = useCart();
   const [selectedPetCategory, setSelectedPetCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Dynamically compute nearby stores sorted by proximity to user's pinned location
+  const nearbyStores = STORES.map(s => {
+    const dist = haversineDistanceKm(
+      selectedLocation?.lat || 17.4156,
+      selectedLocation?.lng || 78.4350,
+      s.lat || 17.4156,
+      s.lng || 78.4350
+    );
+    const eta = Math.max(15, Math.round(15 + dist * 3));
+    return {
+      ...s,
+      calculatedDistance: dist,
+      dynamicDistance: `${dist} km away`,
+      dynamicEta: `${eta}-${eta + 5} min`
+    };
+  }).sort((a, b) => a.calculatedDistance - b.calculatedDistance);
 
   const filteredProducts = PRODUCTS.filter(p => {
     const matchCategory = selectedPetCategory === 'all' || p.petType === selectedPetCategory;
@@ -21,22 +48,32 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <SafeScreen backgroundColor={colors.background}>
+      {/* Fresh Launch / On-Demand Location Pin Popup */}
+      <LocationPinModal
+        visible={!hasPinnedLocation || isLocationModalOpen}
+        onClose={closeLocationModal}
+      />
+
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Top Address & Location Header */}
       <View style={styles.topHeader}>
-        <View style={styles.locationWrapper}>
+        <TouchableOpacity
+          style={styles.locationWrapper}
+          onPress={openLocationModal}
+          activeOpacity={0.8}
+        >
           <View style={styles.locationBadge}>
             <Ionicons name="flash" size={14} color="#FFF" />
             <Text style={styles.locationBadgeText}>15 MINS</Text>
           </View>
           <View style={styles.locationTextGroup}>
             <View style={styles.locationRow}>
-              <Text style={styles.locationTitle}>{selectedLocation.label} - {selectedLocation.city}</Text>
+              <Text style={styles.locationTitle}>{selectedLocation.label || 'Home'} - {selectedLocation.city}</Text>
               <Ionicons name="chevron-down" size={14} color={colors.textPrimary} />
             </View>
             <Text style={styles.locationSubtitle} numberOfLines={1}>{selectedLocation.area}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.aiChatButton}
@@ -121,6 +158,67 @@ export default function HomeScreen({ navigation }) {
           source={{ uri: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=300&q=80' }}
           style={styles.bannerImage}
         />
+      </View>
+
+      {/* Nearby Stores Discovery Section */}
+      <View style={styles.nearbySection}>
+        <View style={styles.sectionHeaderRow}>
+          <View style={styles.nearbyHeadingGroup}>
+            <View style={styles.nearbyIconBadge}>
+              <Ionicons name="location" size={14} color="#FFFFFF" />
+            </View>
+            <View>
+              <Text style={styles.sectionTitle}>Nearby Pet Stores</Text>
+              <Text style={styles.nearbySubtitle}>Fast 15-min delivery from local pet shops</Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.nearbyActionBtn}
+            onPress={() => navigation.navigate('StoresTab')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="compass" size={13} color="#D97706" />
+            <Text style={styles.nearbyActionBtnText}>All Stores →</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.nearbyScroll}>
+          {nearbyStores.map(store => (
+            <TouchableOpacity
+              key={store.id}
+              style={styles.nearbyStoreCard}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate('CatalogTab')}
+            >
+              <Image source={{ uri: store.image }} style={styles.nearbyStoreImg} />
+              <View style={styles.nearbyStoreBody}>
+                <View style={styles.nearbyStoreTopRow}>
+                  <Text style={styles.nearbyStoreName} numberOfLines={1}>{store.name}</Text>
+                  {store.verified && (
+                    <Ionicons name="checkmark-circle" size={14} color="#0284C7" />
+                  )}
+                </View>
+                <Text style={styles.nearbyStoreAddress} numberOfLines={1}>{store.address}</Text>
+
+                <View style={styles.nearbyBadgesRow}>
+                  <View style={styles.distanceBadge}>
+                    <Ionicons name="navigate" size={10} color="#D97706" />
+                    <Text style={styles.distanceBadgeText}>{store.dynamicDistance}</Text>
+                  </View>
+                  <View style={styles.timeBadge}>
+                    <Ionicons name="flash" size={10} color="#059669" />
+                    <Text style={styles.timeBadgeText}>{store.dynamicEta}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.nearbyFooterRow}>
+                  <Text style={styles.nearbyOpenStatus}>{store.openStatus?.split('•')?.[0] || 'Open Now'}</Text>
+                  <Text style={styles.visitStoreLink}>Shop →</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       {/* Featured Products */}
@@ -570,6 +668,138 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 10,
     fontWeight: '800',
+  },
+  nearbySection: {
+    marginBottom: 20,
+    paddingHorizontal: 16,
+  },
+  nearbyHeadingGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  nearbyIconBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: '#FB8500',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nearbySubtitle: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 1,
+  },
+  nearbyActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  nearbyActionBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#D97706',
+  },
+  nearbyScroll: {
+    paddingVertical: 8,
+    gap: 12,
+  },
+  nearbyStoreCard: {
+    width: 200,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  nearbyStoreImg: {
+    width: '100%',
+    height: 95,
+  },
+  nearbyStoreBody: {
+    padding: 10,
+  },
+  nearbyStoreTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 4,
+  },
+  nearbyStoreName: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  nearbyStoreAddress: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  nearbyBadgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginVertical: 6,
+  },
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  distanceBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  timeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  timeBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#065F46',
+  },
+  nearbyFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 6,
+    marginTop: 2,
+  },
+  nearbyOpenStatus: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  visitStoreLink: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#D97706',
   },
 });
 

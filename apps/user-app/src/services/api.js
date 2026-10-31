@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PRODUCTS, STORES, SERVICES, COUPONS, USER_SEED } from '../data/mockData';
 
-const DEFAULT_API_BASE_URL = 'http://localhost:5000/api';
+const DEFAULT_API_BASE_URL = 'https://pawnear.in/api';
 
 class ApiService {
   constructor() {

@@ -26,7 +26,7 @@ router.post('/razorpay/create-order', protect, async (req, res) => {
       notes: notes || { platform: 'PAW NEAR Pet Care' }
     };
 
-    const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_TZzYiXfrR4BC17';
+    const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_Tu4PfwFT0tTObw';
 
     // If Razorpay initialized with real or sample keys
     if (razorpayInstance) {

@@ -224,6 +224,15 @@ router.post('/onboarding', async (req, res) => {
       await user.save();
     }
 
+    const vendorLocation = {
+      address: location?.address || '',
+      city: location?.city || 'Hyderabad',
+      state: location?.state || 'Telangana',
+      pincode: location?.pincode || '500034',
+      lat: (location?.lat !== undefined && !isNaN(Number(location?.lat))) ? Number(location?.lat) : 17.4156,
+      lng: (location?.lng !== undefined && !isNaN(Number(location?.lng))) ? Number(location?.lng) : 78.4350
+    };
+
     const vendor = await Vendor.create({
       user: user._id,
       storeName,
@@ -232,7 +241,7 @@ router.post('/onboarding', async (req, res) => {
       phone,
       category: category || 'Pet Store & Services',
       businessTypes,
-      location,
+      location: vendorLocation,
       photos,
       storeLicenceNumber,
       panNumber,
@@ -255,11 +264,89 @@ router.post('/onboarding', async (req, res) => {
   }
 });
 
+// Helper: Haversine distance in kilometers
+const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
+  const p1 = Number(lat1);
+  const l1 = Number(lon1);
+  const p2 = Number(lat2);
+  const l2 = Number(lon2);
+  if (isNaN(p1) || isNaN(l1) || isNaN(p2) || isNaN(l2)) return 3.5;
+  const R = 6371; // Earth radius in km
+  const dLat = (p2 - p1) * (Math.PI / 180);
+  const dLon = (l2 - l1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(p1 * (Math.PI / 180)) * Math.cos(p2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10;
+};
+
+// @route   GET /api/vendors/nearby
+// @desc    Get stores sorted by proximity to user coordinates
+router.get('/nearby', async (req, res) => {
+  try {
+    const userLat = Number(req.query.lat) || 17.4156;
+    const userLng = Number(req.query.lng) || 78.4350;
+    const maxKm = Number(req.query.maxDistance) || 100;
+
+    let vendors = await Vendor.find({
+      status: { $in: ['approved', 'pending'] }
+    }).select('-bankDetails -kycDocs').lean();
+
+    const enriched = vendors.map(v => {
+      const vLat = v.location?.lat || 17.4156;
+      const vLng = v.location?.lng || 78.4350;
+      const dist = calculateDistanceKm(userLat, userLng, vLat, vLng);
+      const eta = Math.max(15, Math.round(15 + dist * 3));
+      return {
+        ...v,
+        distanceKm: dist,
+        distanceText: `${dist} km away`,
+        etaMinutes: eta,
+        etaText: `${eta}-${eta + 5} mins`
+      };
+    })
+    .filter(v => v.distanceKm <= maxKm)
+    .sort((a, b) => a.distanceKm - b.distanceKm);
+
+    res.json({
+      success: true,
+      count: enriched.length,
+      userLocation: { lat: userLat, lng: userLng },
+      vendors: enriched
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // @route   GET /api/vendors
-// @desc    Get all active/approved stores for directory
+// @desc    Get all active/approved stores for directory (optionally sorted by distance if lat/lng passed)
 router.get('/', async (req, res) => {
   try {
-    const vendors = await Vendor.find({ status: 'approved' }).select('-bankDetails -kycDocs');
+    let vendors = await Vendor.find({
+      status: { $in: ['approved', 'pending'] }
+    }).select('-bankDetails -kycDocs').lean();
+
+    if (req.query.lat && req.query.lng) {
+      const userLat = Number(req.query.lat);
+      const userLng = Number(req.query.lng);
+      vendors = vendors.map(v => {
+        const vLat = v.location?.lat || 17.4156;
+        const vLng = v.location?.lng || 78.4350;
+        const dist = calculateDistanceKm(userLat, userLng, vLat, vLng);
+        const eta = Math.max(15, Math.round(15 + dist * 3));
+        return {
+          ...v,
+          distanceKm: dist,
+          distanceText: `${dist} km away`,
+          etaMinutes: eta,
+          etaText: `${eta}-${eta + 5} mins`
+        };
+      }).sort((a, b) => a.distanceKm - b.distanceKm);
+    }
+
     res.json({
       success: true,
       count: vendors.length,

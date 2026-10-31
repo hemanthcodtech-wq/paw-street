@@ -9,10 +9,14 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(USER_SEED);
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [pets, setPets] = useState(USER_SEED.pets);
+  const [hasPinnedLocation, setHasPinnedLocation] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState({
     city: 'Hyderabad',
     area: 'Banjara Hills, Road No 12',
     pincode: '500034',
+    lat: 17.4156,
+    lng: 78.4350,
     label: 'Home'
   });
   const [loading, setLoading] = useState(true);
@@ -108,6 +112,17 @@ export function AuthProvider({ children }) {
 
   const updateLocation = (loc) => {
     setSelectedLocation(loc);
+    setHasPinnedLocation(true);
+    setIsLocationModalOpen(false);
+  };
+
+  const openLocationModal = () => {
+    setIsLocationModalOpen(true);
+  };
+
+  const closeLocationModal = () => {
+    setIsLocationModalOpen(false);
+    setHasPinnedLocation(true);
   };
 
   return (
@@ -119,6 +134,10 @@ export function AuthProvider({ children }) {
         addPet,
         selectedLocation,
         updateLocation,
+        hasPinnedLocation,
+        isLocationModalOpen,
+        openLocationModal,
+        closeLocationModal,
         login,
         loginWithTokenAndUser,
         register,

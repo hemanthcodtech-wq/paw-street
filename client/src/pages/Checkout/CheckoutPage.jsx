@@ -161,7 +161,7 @@ export default function CheckoutPage() {
         const razorpayRes = await api.createRazorpayOrder(finalTotal, `rcpt_${Date.now()}`);
         
         if (razorpayRes && razorpayRes.order) {
-          const key = razorpayRes.keyId || razorpayRes.key || 'rzp_test_TZzYiXfrR4BC17';
+          const key = razorpayRes.keyId || razorpayRes.key || 'rzp_test_Tu4PfwFT0tTObw';
           const options = {
             key: key,
             amount: razorpayRes.order.amount,

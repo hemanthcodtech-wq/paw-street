@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { usePartnerAuth } from '../../context/PartnerAuthContext';
 import { colors } from '../../theme/colors';
 import SafeScreen from '../../components/SafeScreen';
+import { geocodeAddress, reverseGeocodeCoords, HYDERABAD_HUBS } from '../../services/geocoding';
 
 export default function VendorAuthScreen({ navigation }) {
   const { switchRole, loginPartner, registerPartner, loginPartnerWithTokenAndUser } = usePartnerAuth();
@@ -35,7 +36,12 @@ export default function VendorAuthScreen({ navigation }) {
     address: '',
     city: 'Hyderabad',
     pincode: '500034',
+    lat: '17.4156',
+    lng: '78.4350',
+    landmark: '',
+    gpsCaptured: false
   });
+  const [detectingGps, setDetectingGps] = useState(false);
 
   // Deep link listener for Google Auth Bridge
   useEffect(() => {
@@ -129,6 +135,93 @@ export default function VendorAuthScreen({ navigation }) {
     }
   };
 
+  const handleDetectStoreGPS = async () => {
+    setDetectingGps(true);
+    try {
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            const lat = Number(pos.coords.latitude.toFixed(6));
+            const lng = Number(pos.coords.longitude.toFixed(6));
+            const geo = await reverseGeocodeCoords(lat, lng);
+            setFormData(prev => ({
+              ...prev,
+              lat: String(lat),
+              lng: String(lng),
+              address: geo.area ? `${geo.area}, ${geo.city}` : prev.address,
+              city: geo.city || prev.city,
+              pincode: geo.pincode || prev.pincode,
+              gpsCaptured: true
+            }));
+            setDetectingGps(false);
+            Alert.alert('Store GPS Pinned! 📍', `Location captured: ${geo.area || 'Current Location'}, ${geo.city} (${lat}, ${lng})`);
+          },
+          async () => {
+            // Fallback to Banjara Hills hub
+            const hub = HYDERABAD_HUBS[0];
+            setFormData(prev => ({
+              ...prev,
+              lat: String(hub.lat),
+              lng: String(hub.lng),
+              address: prev.address || `${hub.area}, Road No 12`,
+              city: hub.city,
+              pincode: hub.pincode,
+              gpsCaptured: true
+            }));
+            setDetectingGps(false);
+            Alert.alert('Store GPS Set 📍', `Defaulted to ${hub.area}, ${hub.city} (${hub.lat}, ${hub.lng}). You can adjust the coordinates below.`);
+          },
+          { enableHighAccuracy: true, timeout: 6000 }
+        );
+      } else {
+        const hub = HYDERABAD_HUBS[0];
+        setFormData(prev => ({
+          ...prev,
+          lat: String(hub.lat),
+          lng: String(hub.lng),
+          address: prev.address || `${hub.area}, Road No 12`,
+          city: hub.city,
+          pincode: hub.pincode,
+          gpsCaptured: true
+        }));
+        setDetectingGps(false);
+        Alert.alert('Store Location Pinned 📍', `Location coordinates set to ${hub.area}, ${hub.city} (${hub.lat}, ${hub.lng}).`);
+      }
+    } catch (e) {
+      setDetectingGps(false);
+      Alert.alert('Location Error', e.message || 'Could not fetch device GPS.');
+    }
+  };
+
+  const handleGeocodeStoreAddress = async () => {
+    const query = `${formData.address} ${formData.city} ${formData.pincode}`.trim();
+    if (!query) {
+      Alert.alert('Address Required', 'Please enter store address and city first.');
+      return;
+    }
+    setDetectingGps(true);
+    try {
+      const geo = await geocodeAddress(query);
+      if (geo) {
+        setFormData(prev => ({
+          ...prev,
+          lat: String(geo.lat),
+          lng: String(geo.lng),
+          city: geo.city || prev.city,
+          pincode: geo.pincode || prev.pincode,
+          gpsCaptured: true
+        }));
+        Alert.alert('Address Geocoded! 🎯', `Store coordinates resolved to ${geo.lat}, ${geo.lng}`);
+      } else {
+        Alert.alert('Geocoding Notice', 'Could not resolve exact coordinates. Defaulted to Hyderabad center.');
+      }
+    } catch (e) {
+      Alert.alert('Geocoding Error', e.message);
+    } finally {
+      setDetectingGps(false);
+    }
+  };
+
   const handleOnboardingSubmit = async () => {
     if (!formData.fullName || !formData.email || !formData.storeName) {
       Alert.alert('Required Fields', 'Please fill in Owner Name, Email, and Store Display Name.');
@@ -144,10 +237,17 @@ export default function VendorAuthScreen({ navigation }) {
           phone: formData.phone,
           storeName: formData.storeName,
           city: formData.city,
+          location: {
+            address: formData.address,
+            city: formData.city,
+            pincode: formData.pincode,
+            lat: Number(formData.lat) || 17.4156,
+            lng: Number(formData.lng) || 78.4350
+          }
         },
         'vendor'
       );
-      Alert.alert('Application Submitted! 🎉', `KYC recorded for ${formData.storeName}. Welcome to the Vendor Network!`);
+      Alert.alert('Application Submitted! 🎉', `KYC & Store GPS recorded for ${formData.storeName}. Welcome to the Vendor Network!`);
       navigation.replace('MainTabs');
     } catch (e) {
       Alert.alert('Submission Error', e.message);
@@ -432,13 +532,26 @@ export default function VendorAuthScreen({ navigation }) {
 
             {/* Section 5 */}
             <View style={styles.sectionBadge}>
-              <Text style={styles.sectionBadgeText}>SECTION 5: STORE LOCATION ADDRESS</Text>
+              <Text style={styles.sectionBadgeText}>SECTION 5: STORE LOCATION & GPS PIN</Text>
             </View>
 
-            <Text style={styles.label}>Store Address</Text>
+            {/* GPS Detection Button */}
+            <TouchableOpacity
+              style={styles.gpsDetectBtn}
+              onPress={handleDetectStoreGPS}
+              disabled={detectingGps}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="location" size={18} color="#FFF" />
+              <Text style={styles.gpsDetectBtnText}>
+                {detectingGps ? 'Detecting Store GPS...' : '📍 Detect Current Store GPS Location'}
+              </Text>
+            </TouchableOpacity>
+
+            <Text style={styles.label}>Store Street Address *</Text>
             <TextInput
               style={styles.inputSimple}
-              placeholder="Road No 12, Banjara Hills"
+              placeholder="e.g. Road No 12, Banjara Hills"
               placeholderTextColor="#94A3B8"
               value={formData.address}
               onChangeText={(val) => setFormData({ ...formData, address: val })}
@@ -446,7 +559,7 @@ export default function VendorAuthScreen({ navigation }) {
 
             <View style={styles.twoCol}>
               <View style={{ flex: 1, marginRight: 6 }}>
-                <Text style={styles.label}>City</Text>
+                <Text style={styles.label}>City *</Text>
                 <TextInput
                   style={styles.inputSimple}
                   value={formData.city}
@@ -454,7 +567,7 @@ export default function VendorAuthScreen({ navigation }) {
                 />
               </View>
               <View style={{ flex: 1, marginLeft: 6 }}>
-                <Text style={styles.label}>Pincode</Text>
+                <Text style={styles.label}>Pincode *</Text>
                 <TextInput
                   style={styles.inputSimple}
                   value={formData.pincode}
@@ -462,6 +575,40 @@ export default function VendorAuthScreen({ navigation }) {
                 />
               </View>
             </View>
+
+            {/* GPS Coordinates (Lat / Lng) */}
+            <View style={styles.twoCol}>
+              <View style={{ flex: 1, marginRight: 6 }}>
+                <Text style={styles.label}>GPS Latitude</Text>
+                <TextInput
+                  style={[styles.inputSimple, styles.monoInput]}
+                  value={formData.lat}
+                  onChangeText={(val) => setFormData({ ...formData, lat: val })}
+                  placeholder="17.4156"
+                  keyboardType="numeric"
+                />
+              </View>
+              <View style={{ flex: 1, marginLeft: 6 }}>
+                <Text style={styles.label}>GPS Longitude</Text>
+                <TextInput
+                  style={[styles.inputSimple, styles.monoInput]}
+                  value={formData.lng}
+                  onChangeText={(val) => setFormData({ ...formData, lng: val })}
+                  placeholder="78.4350"
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.geocodeBtn}
+              onPress={handleGeocodeStoreAddress}
+              disabled={detectingGps}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="search" size={15} color="#FB8500" />
+              <Text style={styles.geocodeBtnText}>🔍 Pin GPS from Address (Google Geocoding)</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.submitBtnVendor}
@@ -751,6 +898,49 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#1E293B',
+  },
+  gpsDetectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#FB8500',
+    borderRadius: 12,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+    shadowColor: '#FB8500',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  gpsDetectBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  monoInput: {
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    color: '#0F172A',
+    fontWeight: '700',
+  },
+  geocodeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    borderRadius: 12,
+    paddingVertical: 9,
+    marginVertical: 6,
+  },
+  geocodeBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#C2410C',
   },
 });
 

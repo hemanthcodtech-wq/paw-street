@@ -212,22 +212,127 @@ export default function VendorOnboardingPage() {
     }
   };
 
+  // Reverse geocoding helper using Google Geocoding API + Nominatim fallback
+  const reverseGeocodeCoords = async (lat, lng) => {
+    try {
+      const gUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=AIzaSyC1GuN_tIuHPzUkpD5B01icJTb96Tu49S0`;
+      const res = await fetch(gUrl);
+      const data = await res.json();
+      if (data.status === 'OK' && data.results?.[0]) {
+        const item = data.results[0];
+        let address = item.formatted_address || '';
+        let city = '';
+        let pincode = '';
+        item.address_components?.forEach(c => {
+          if (c.types.includes('locality')) city = c.long_name;
+          if (c.types.includes('postal_code')) pincode = c.long_name;
+        });
+        setFormData(prev => ({
+          ...prev,
+          location: {
+            ...prev.location,
+            address: address || prev.location.address,
+            city: city || prev.location.city,
+            pincode: pincode || prev.location.pincode
+          }
+        }));
+        return;
+      }
+    } catch (e) {
+      console.warn('Google reverse geocode error:', e);
+    }
+
+    try {
+      const nUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
+      const res = await fetch(nUrl, { headers: { 'User-Agent': 'PawNear/1.0' } });
+      const data = await res.json();
+      if (data && data.address) {
+        const addr = data.display_name?.split(',').slice(0, 3).join(', ') || '';
+        const city = data.address.city || data.address.town || data.address.suburb || 'Hyderabad';
+        const pincode = data.address.postcode || '500034';
+        setFormData(prev => ({
+          ...prev,
+          location: {
+            ...prev.location,
+            address: addr || prev.location.address,
+            city: city || prev.location.city,
+            pincode: pincode || prev.location.pincode
+          }
+        }));
+      }
+    } catch (e) {
+      console.warn('Nominatim reverse geocode error:', e);
+    }
+  };
+
+  // Forward geocoding from entered store address
+  const handleGeocodeAddress = async () => {
+    const fullQuery = `${formData.location.address || ''} ${formData.location.city || ''} ${formData.location.pincode || ''}`.trim();
+    if (!fullQuery) return;
+    setGpsLoading(true);
+    try {
+      const gUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(fullQuery)}&key=AIzaSyC1GuN_tIuHPzUkpD5B01icJTb96Tu49S0`;
+      const res = await fetch(gUrl);
+      const data = await res.json();
+      if (data.status === 'OK' && data.results?.[0]?.geometry?.location) {
+        const { lat, lng } = data.results[0].geometry.location;
+        setFormData(prev => ({
+          ...prev,
+          location: {
+            ...prev.location,
+            lat: Number(lat.toFixed(6)),
+            lng: Number(lng.toFixed(6))
+          }
+        }));
+        setGpsSuccess(true);
+        setGpsLoading(false);
+        return;
+      }
+    } catch (e) {
+      console.warn('Google geocode error:', e);
+    }
+
+    try {
+      const nUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fullQuery)}&format=json&limit=1`;
+      const res = await fetch(nUrl, { headers: { 'User-Agent': 'PawNear/1.0' } });
+      const data = await res.json();
+      if (data && data[0]) {
+        setFormData(prev => ({
+          ...prev,
+          location: {
+            ...prev.location,
+            lat: Number(Number(data[0].lat).toFixed(6)),
+            lng: Number(Number(data[0].lon).toFixed(6))
+          }
+        }));
+        setGpsSuccess(true);
+      }
+    } catch (e) {
+      console.warn('Nominatim geocode error:', e);
+    } finally {
+      setGpsLoading(false);
+    }
+  };
+
   // Real-time GPS Location Trigger
   const handleCaptureGPS = () => {
     setGpsLoading(true);
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          const lat = Number(position.coords.latitude.toFixed(6));
+          const lng = Number(position.coords.longitude.toFixed(6));
           setFormData(prev => ({
             ...prev,
             location: {
               ...prev.location,
-              lat: Number(position.coords.latitude.toFixed(6)),
-              lng: Number(position.coords.longitude.toFixed(6))
+              lat,
+              lng
             }
           }));
           setGpsLoading(false);
           setGpsSuccess(true);
+          reverseGeocodeCoords(lat, lng);
         },
         () => {
           // Accurate default fallback
@@ -1189,14 +1294,27 @@ export default function VendorOnboardingPage() {
 
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Landmark /store location
+                    Landmark / Store Location Note
                   </label>
                   <input
                     type="text"
                     value={formData.location.landmark}
                     onChange={(e) => handleLocationChange('landmark', e.target.value)}
+                    placeholder="e.g. Opposite Park, Beside State Bank"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-amber-400"
                   />
+                </div>
+
+                <div className="sm:col-span-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleGeocodeAddress}
+                    disabled={gpsLoading}
+                    className="w-full py-2.5 px-4 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-2xs"
+                  >
+                    <MapPin className="w-4 h-4 text-amber-600" />
+                    <span>Pin Store Location on Map from Entered Address (Google Geocoding)</span>
+                  </button>
                 </div>
               </div>
 
