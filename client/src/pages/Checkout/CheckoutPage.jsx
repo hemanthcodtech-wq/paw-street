@@ -48,8 +48,11 @@ export default function CheckoutPage() {
   const [deliverySpeed, setDeliverySpeed] = useState('instant'); // 'instant' | 'scheduled'
   const [scheduledSlot, setScheduledSlot] = useState(availableDates[0]);
   const [paymentMethod, setPaymentMethod] = useState('online'); // 'online' | 'cod'
+  const [tipAmount, setTipAmount] = useState(20); // Delivery partner tip
   const [isProcessing, setIsProcessing] = useState(false);
   const [addressError, setAddressError] = useState('');
+
+  const grandTotalWithTip = finalTotal + tipAmount;
 
   // Add Address Inline State
   const [showAddressForm, setShowAddressForm] = useState(savedAddresses.length === 0);
@@ -106,7 +109,8 @@ export default function CheckoutPage() {
       couponDiscount: couponDiscount,
       deliveryFee: deliveryFee,
       platformFee: platformFee,
-      finalTotal: finalTotal
+      tip: tipAmount,
+      finalTotal: grandTotalWithTip
     });
 
     // Fire celebratory confetti
@@ -158,7 +162,7 @@ export default function CheckoutPage() {
       const isLoaded = await loadRazorpayScript();
       if (isLoaded && window.Razorpay) {
         // Request order from backend
-        const razorpayRes = await api.createRazorpayOrder(finalTotal, `rcpt_${Date.now()}`);
+        const razorpayRes = await api.createRazorpayOrder(grandTotalWithTip, `rcpt_${Date.now()}`);
         
         if (razorpayRes && razorpayRes.order) {
           const key = razorpayRes.keyId || razorpayRes.key || 'rzp_test_Tu4PfwFT0tTObw';
@@ -566,6 +570,36 @@ export default function CheckoutPage() {
               ))}
             </div>
 
+            {/* Delivery Partner Tip Section */}
+            <div className="pt-3 border-t border-slate-100">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="text-red-500">❤️</span>
+                <span className="text-xs font-bold text-slate-800">Tip Your Delivery Partner</span>
+              </div>
+              <p className="text-[11px] text-slate-400 mb-2">100% of your tip goes directly to your rider for fast 15-min delivery.</p>
+              <div className="grid grid-cols-4 gap-1.5">
+                {[
+                  { label: 'No Tip', amount: 0 },
+                  { label: '₹20 😊', amount: 20 },
+                  { label: '₹30 ❤️', amount: 30 },
+                  { label: '₹50 ⭐', amount: 50 },
+                ].map(p => (
+                  <button
+                    key={p.amount}
+                    type="button"
+                    onClick={() => setTipAmount(p.amount)}
+                    className={`py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                      tipAmount === p.amount
+                        ? 'bg-red-50 border-red-400 text-red-600 shadow-xs'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Pricing Breakdown */}
             <div className="pt-3 border-t border-slate-100 space-y-2 text-xs">
               <div className="flex justify-between text-slate-600">
@@ -592,9 +626,15 @@ export default function CheckoutPage() {
                 <span>Platform Fee</span>
                 <span>₹{platformFee}</span>
               </div>
+              {tipAmount > 0 && (
+                <div className="flex justify-between text-red-600 font-bold">
+                  <span>Rider Tip ❤️</span>
+                  <span>+ ₹{tipAmount}</span>
+                </div>
+              )}
               <div className="pt-2 border-t border-slate-200 flex justify-between items-baseline">
                 <span className="font-extrabold text-slate-900 text-sm">To Pay</span>
-                <span className="text-2xl font-black text-slate-900">₹{finalTotal}</span>
+                <span className="text-2xl font-black text-slate-900">₹{grandTotalWithTip}</span>
               </div>
             </div>
 
@@ -609,8 +649,8 @@ export default function CheckoutPage() {
                 {isProcessing 
                   ? 'Connecting to Payment...' 
                   : paymentMethod === 'cod' 
-                    ? `Place COD Order (₹${finalTotal})` 
-                    : `Pay with Razorpay (₹${finalTotal})`
+                    ? `Place COD Order (₹${grandTotalWithTip})` 
+                    : `Pay with Razorpay (₹${grandTotalWithTip})`
                 }
               </span>
             </button>

@@ -45,6 +45,7 @@ const orderSchema = new mongoose.Schema({
     deliveryFee: { type: Number, default: 49 },
     discount: { type: Number, default: 0 },
     tax: { type: Number, default: 0 },
+    tip: { type: Number, default: 0 },
     total: { type: Number, required: true }
   },
   payment: {
@@ -75,6 +76,7 @@ const orderSchema = new mongoose.Schema({
     vendorNetAmount: { type: Number, default: 0 },
     commissionRate: { type: Number, default: 0 },
     riderPayoutAmount: { type: Number, default: 0 },
+    riderTipAmount: { type: Number, default: 0 },
     riderPayoutRate: { type: Number, default: 0.6 },
     payoutReference: { type: String, default: '' },
     paidAt: { type: Date, default: null },

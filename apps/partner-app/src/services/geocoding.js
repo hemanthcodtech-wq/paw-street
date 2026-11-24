@@ -177,3 +177,4 @@ export const reverseGeocodeCoords = async (lat, lng) => {
     formattedAddress: `${nearest.area}, ${nearest.city} (${nearest.pincode})`
   };
 };
+

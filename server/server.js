@@ -117,6 +117,10 @@ app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/delivery', require('./routes/deliveryRoutes'));
 app.use('/api/admin', protect, authorizeRoles('admin'), require('./routes/adminRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
+app.use('/api/van-services', require('./routes/vanRoutes'));
+app.use('/api/lost-pets', require('./routes/lostPetRoutes'));
+app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
+app.use('/api/relocation', require('./routes/relocationRoutes'));
 
 // Serve Frontend Website Build from AWS Server
 const fs = require('fs');

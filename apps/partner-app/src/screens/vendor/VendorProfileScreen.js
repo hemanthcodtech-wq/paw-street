@@ -1,26 +1,64 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePartnerAuth } from '../../context/PartnerAuthContext';
 import { useVendor } from '../../context/VendorContext';
 import { colors } from '../../theme/colors';
+import VendorSubscriptionModal from './VendorSubscriptionModal';
 
 export default function VendorProfileScreen({ navigation }) {
   const { partnerUser, logoutPartner, switchRole } = usePartnerAuth();
   const { isStoreOpen, toggleStoreStatus } = useVendor();
+  const [activePlan, setActivePlan] = useState('pro');
+  const [isSubModalOpen, setIsSubModalOpen] = useState(false);
 
   return (
     <ScrollView style={styles.container}>
+      <VendorSubscriptionModal
+        visible={isSubModalOpen}
+        onClose={() => setIsSubModalOpen(false)}
+        activePlan={activePlan}
+        onPlanUpdated={(plan) => setActivePlan(plan)}
+      />
+
       {/* Store Header */}
       <View style={styles.profileHeader}>
         <View style={styles.storeAvatar}>
           <Ionicons name="storefront" size={28} color={colors.white} />
         </View>
         <View style={styles.profileText}>
-          <Text style={styles.storeName}>{partnerUser?.storeName || 'Paw Street Central Store'}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.storeName}>{partnerUser?.storeName || 'Paw Street Central Store'}</Text>
+            {activePlan !== 'starter' && (
+              <Ionicons name="shield-checkmark" size={16} color="#D97706" />
+            )}
+          </View>
           <Text style={styles.ownerText}>Owner: {partnerUser?.ownerName || 'Rajesh Sharma'}</Text>
           <Text style={styles.contactText}>{partnerUser?.phone} • {partnerUser?.email}</Text>
         </View>
+      </View>
+
+      {/* Subscription Tier Card */}
+      <View style={styles.subPlanCard}>
+        <View style={styles.subPlanLeft}>
+          <View style={styles.subPlanBadge}>
+            <Ionicons name="ribbon" size={14} color="#B45309" />
+            <Text style={styles.subPlanBadgeText}>{activePlan.toUpperCase()} SELLER</Text>
+          </View>
+          <Text style={styles.subPlanTitle}>
+            {activePlan === 'starter' ? '12% Platform Commission' : activePlan === 'pro' ? '7% Comm. • Verified Golden Store' : '3% Comm. • Elite Superstore VIP'}
+          </Text>
+          <Text style={styles.subPlanHint}>
+            {activePlan === 'starter' ? 'Upgrade to Pro to cut commission to 7%' : 'Enjoying high margin & search priority'}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.subPlanBtn}
+          onPress={() => setIsSubModalOpen(true)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.subPlanBtnText}>Plans →</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Store Open Status Setting */}
@@ -101,6 +139,53 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
     marginBottom: 14,
+  },
+  subPlanCard: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: '#FDE68A',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  subPlanLeft: {
+    flex: 1,
+    marginRight: 10,
+  },
+  subPlanBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  subPlanBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#B45309',
+  },
+  subPlanTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#78350F',
+    marginBottom: 2,
+  },
+  subPlanHint: {
+    fontSize: 11,
+    color: '#92400E',
+  },
+  subPlanBtn: {
+    backgroundColor: '#D97706',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  subPlanBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '800',
   },
   storeAvatar: {
     width: 54,

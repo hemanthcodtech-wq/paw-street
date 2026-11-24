@@ -7,6 +7,9 @@ import { PET_CATEGORIES, PRODUCTS, SERVICES, STORES } from '../data/mockData';
 import { colors } from '../theme/colors';
 import SafeScreen from '../components/SafeScreen';
 import LocationPinModal from '../components/LocationPinModal';
+import PetVanModal from '../components/PetVanModal';
+import LostPetSOSModal from '../components/LostPetSOSModal';
+import PetRelocationModal from '../components/PetRelocationModal';
 import { haversineDistanceKm } from '../services/geocoding';
 
 export default function HomeScreen({ navigation }) {
@@ -22,6 +25,11 @@ export default function HomeScreen({ navigation }) {
   const { addToCart } = useCart();
   const [selectedPetCategory, setSelectedPetCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Modals for new flagship services
+  const [isVanModalOpen, setIsVanModalOpen] = useState(false);
+  const [isLostPetModalOpen, setIsLostPetModalOpen] = useState(false);
+  const [isRelocationModalOpen, setIsRelocationModalOpen] = useState(false);
 
   // Dynamically compute nearby stores sorted by proximity to user's pinned location
   const nearbyStores = STORES.map(s => {
@@ -52,6 +60,22 @@ export default function HomeScreen({ navigation }) {
       <LocationPinModal
         visible={!hasPinnedLocation || isLocationModalOpen}
         onClose={closeLocationModal}
+      />
+
+      {/* Flagship Modals */}
+      <PetVanModal
+        visible={isVanModalOpen}
+        onClose={() => setIsVanModalOpen(false)}
+        selectedLocation={selectedLocation}
+      />
+      <LostPetSOSModal
+        visible={isLostPetModalOpen}
+        onClose={() => setIsLostPetModalOpen(false)}
+        selectedLocation={selectedLocation}
+      />
+      <PetRelocationModal
+        visible={isRelocationModalOpen}
+        onClose={() => setIsRelocationModalOpen(false)}
       />
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -158,6 +182,66 @@ export default function HomeScreen({ navigation }) {
           source={{ uri: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=300&q=80' }}
           style={styles.bannerImage}
         />
+      </View>
+
+      {/* Flagship Specialty Services Quick Grid */}
+      <View style={styles.specialServicesSection}>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Specialty Pet Services</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('ServicesTab')}>
+            <Text style={styles.seeAllText}>Explore Care →</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.specialServicesScroll}>
+          {/* Pet Van */}
+          <TouchableOpacity
+            style={[styles.specialCard, { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }]}
+            onPress={() => setIsVanModalOpen(true)}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.specialIconBox, { backgroundColor: '#F59E0B' }]}>
+              <Ionicons name="bus" size={20} color="#FFF" />
+            </View>
+            <Text style={styles.specialCardTitle}>Mobile Pet Van</Text>
+            <Text style={styles.specialCardSub}>AC Spa & Vet at doorstep</Text>
+            <View style={[styles.specialCardPill, { backgroundColor: '#D97706' }]}>
+              <Text style={styles.specialCardPillText}>Book Slot</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Pet Relocation */}
+          <TouchableOpacity
+            style={[styles.specialCard, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }]}
+            onPress={() => setIsRelocationModalOpen(true)}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.specialIconBox, { backgroundColor: '#0284C7' }]}>
+              <Ionicons name="airplane" size={20} color="#FFF" />
+            </View>
+            <Text style={styles.specialCardTitle}>Pet Relocation</Text>
+            <Text style={styles.specialCardSub}>Air cargo & Intercity cab</Text>
+            <View style={[styles.specialCardPill, { backgroundColor: '#0284C7' }]}>
+              <Text style={styles.specialCardPillText}>Get Quote</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Lost Pet SOS */}
+          <TouchableOpacity
+            style={[styles.specialCard, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}
+            onPress={() => setIsLostPetModalOpen(true)}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.specialIconBox, { backgroundColor: '#EF4444' }]}>
+              <Ionicons name="megaphone" size={20} color="#FFF" />
+            </View>
+            <Text style={[styles.specialCardTitle, { color: '#DC2626' }]}>Lost Pet Alert</Text>
+            <Text style={styles.specialCardSub}>10km radius fleet broadcast</Text>
+            <View style={[styles.specialCardPill, { backgroundColor: '#DC2626' }]}>
+              <Text style={styles.specialCardPillText}>Community SOS</Text>
+            </View>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
 
       {/* Nearby Stores Discovery Section */}
@@ -505,6 +589,53 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
+  },
+  specialServicesSection: {
+    marginTop: 20,
+    paddingHorizontal: 16,
+  },
+  specialServicesScroll: {
+    paddingVertical: 10,
+    gap: 12,
+  },
+  specialCard: {
+    width: 155,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1.5,
+    justifyContent: 'space-between',
+    minHeight: 135,
+  },
+  specialIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  specialCardTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  specialCardSub: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    lineHeight: 14,
+    marginBottom: 8,
+  },
+  specialCardPill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  specialCardPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFF',
   },
   productsSection: {
     marginTop: 20,

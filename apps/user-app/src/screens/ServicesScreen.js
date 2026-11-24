@@ -1,13 +1,22 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Modal, Alert, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SERVICES } from '../data/mockData';
 import { colors } from '../theme/colors';
 import SafeScreen from '../components/SafeScreen';
+import PetVanModal from '../components/PetVanModal';
+import LostPetSOSModal from '../components/LostPetSOSModal';
+import PetRelocationModal from '../components/PetRelocationModal';
 
 export default function ServicesScreen() {
   const [selectedService, setSelectedService] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'van' | 'relocation' | 'lostpet'
+  
+  // Flagship modals
+  const [isVanModalOpen, setIsVanModalOpen] = useState(false);
+  const [isRelocationModalOpen, setIsRelocationModalOpen] = useState(false);
+  const [isLostPetModalOpen, setIsLostPetModalOpen] = useState(false);
 
   const handleBook = (srv) => {
     setSelectedService(srv);
@@ -22,43 +31,114 @@ export default function ServicesScreen() {
   return (
     <SafeScreen backgroundColor={colors.background}>
       <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Pet Wellness & Services</Text>
-        <Text style={styles.headerSubtitle}>Verified Groomers, Doctors, Walkers & Boarding</Text>
-      </View>
+        {/* Modals */}
+        <PetVanModal
+          visible={isVanModalOpen}
+          onClose={() => setIsVanModalOpen(false)}
+        />
+        <LostPetSOSModal
+          visible={isLostPetModalOpen}
+          onClose={() => setIsLostPetModalOpen(false)}
+        />
+        <PetRelocationModal
+          visible={isRelocationModalOpen}
+          onClose={() => setIsRelocationModalOpen(false)}
+        />
 
-      <FlatList
-        data={SERVICES}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContainer}
-        renderItem={({ item }) => (
-          <View style={styles.serviceCard}>
-            <Image source={{ uri: item.image }} style={styles.serviceImage} />
-            <View style={styles.cardContent}>
-              <View style={styles.titleRow}>
-                <Text style={styles.title}>{item.title}</Text>
-                <View style={styles.ratingBadge}>
-                  <Ionicons name="star" size={12} color={colors.star} />
-                  <Text style={styles.ratingText}>{item.rating}</Text>
-                </View>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Pet Wellness & Care</Text>
+          <Text style={styles.headerSubtitle}>Doorstep Van, Global Travel, Community SOS & Clinic Care</Text>
+        </View>
+
+        {/* Flagship Specialty Cards Row */}
+        <View style={styles.flagshipContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.flagshipScroll}>
+            {/* 1. Pet Van */}
+            <TouchableOpacity
+              style={[styles.flagshipCard, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }]}
+              onPress={() => setIsVanModalOpen(true)}
+              activeOpacity={0.85}
+            >
+              <View style={[styles.flagshipIconCircle, { backgroundColor: '#D97706' }]}>
+                <Ionicons name="bus" size={20} color="#FFF" />
               </View>
-              <Text style={styles.desc}>{item.description}</Text>
-              <View style={styles.bottomRow}>
-                <View>
-                  <Text style={styles.duration}>⏱ {item.duration}</Text>
-                  <Text style={styles.price}>₹{item.price}</Text>
+              <Text style={styles.flagshipCardTitle}>Doorstep Pet Van</Text>
+              <Text style={styles.flagshipCardSub}>Luxury Spa & Vet inside AC van at your gate</Text>
+              <View style={styles.flagshipBadge}>
+                <Text style={styles.flagshipBadgeText}>Book Slot 🚐</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* 2. Pet Relocation */}
+            <TouchableOpacity
+              style={[styles.flagshipCard, { backgroundColor: '#E0F2FE', borderColor: '#BAE6FD' }]}
+              onPress={() => setIsRelocationModalOpen(true)}
+              activeOpacity={0.85}
+            >
+              <View style={[styles.flagshipIconCircle, { backgroundColor: '#0284C7' }]}>
+                <Ionicons name="airplane" size={20} color="#FFF" />
+              </View>
+              <Text style={styles.flagshipCardTitle}>Pet Relocation</Text>
+              <Text style={styles.flagshipCardSub}>Domestic cab/flight & Global IATA crates</Text>
+              <View style={[styles.flagshipBadge, { backgroundColor: '#0284C7' }]}>
+                <Text style={styles.flagshipBadgeText}>Instant Quote ✈️</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* 3. Lost Pet SOS */}
+            <TouchableOpacity
+              style={[styles.flagshipCard, { backgroundColor: '#FEE2E2', borderColor: '#FECACA' }]}
+              onPress={() => setIsLostPetModalOpen(true)}
+              activeOpacity={0.85}
+            >
+              <View style={[styles.flagshipIconCircle, { backgroundColor: '#DC2626' }]}>
+                <Ionicons name="megaphone" size={20} color="#FFF" />
+              </View>
+              <Text style={[styles.flagshipCardTitle, { color: '#991B1B' }]}>Lost Pet Alert</Text>
+              <Text style={styles.flagshipCardSub}>Broadcast lost pet to 10km radius fleet</Text>
+              <View style={[styles.flagshipBadge, { backgroundColor: '#DC2626' }]}>
+                <Text style={styles.flagshipBadgeText}>Community SOS 🚨</Text>
+              </View>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+
+        <View style={styles.regularHeaderRow}>
+          <Text style={styles.sectionHeaderTitle}>In-Home & Clinic Services</Text>
+        </View>
+
+        <FlatList
+          data={SERVICES}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.listContainer}
+          renderItem={({ item }) => (
+            <View style={styles.serviceCard}>
+              <Image source={{ uri: item.image }} style={styles.serviceImage} />
+              <View style={styles.cardContent}>
+                <View style={styles.titleRow}>
+                  <Text style={styles.title}>{item.title}</Text>
+                  <View style={styles.ratingBadge}>
+                    <Ionicons name="star" size={12} color={colors.star} />
+                    <Text style={styles.ratingText}>{item.rating}</Text>
+                  </View>
                 </View>
-                <TouchableOpacity
-                  style={styles.bookButton}
-                  onPress={() => handleBook(item)}
-                >
-                  <Text style={styles.bookButtonText}>Book Appointment</Text>
-                </TouchableOpacity>
+                <Text style={styles.desc}>{item.description}</Text>
+                <View style={styles.bottomRow}>
+                  <View>
+                    <Text style={styles.duration}>⏱ {item.duration}</Text>
+                    <Text style={styles.price}>₹{item.price}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.bookButton}
+                    onPress={() => handleBook(item)}
+                  >
+                    <Text style={styles.bookButtonText}>Book Appointment</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
-        )}
-      />
+          )}
+        />
 
       {/* Booking Confirmation Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
@@ -253,6 +333,66 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: '#FFF',
+  },
+  flagshipContainer: {
+    paddingVertical: 10,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  flagshipScroll: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  flagshipCard: {
+    width: 175,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1.5,
+    justifyContent: 'space-between',
+    minHeight: 140,
+  },
+  flagshipIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  flagshipCardTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  flagshipCardSub: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    lineHeight: 15,
+    marginBottom: 10,
+  },
+  flagshipBadge: {
+    backgroundColor: '#D97706',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  flagshipBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  regularHeaderRow: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 4,
+  },
+  sectionHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: colors.textPrimary,
   },
 });
 

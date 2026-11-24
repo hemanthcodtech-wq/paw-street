@@ -303,11 +303,12 @@ router.get('/earnings', protect, authorizeRoles('delivery', 'admin'), async (req
     const calcStats = (orders) => {
       const count = orders.length;
       const basePay = orders.reduce((sum, order) => sum + Number(order.settlement?.riderPayoutAmount || Math.round((order.pricing?.deliveryFee || 49) * 0.6)), 0);
+      const tips = orders.reduce((sum, order) => sum + Number(order.settlement?.riderTipAmount || order.pricing?.tip || 0), 0);
       const distanceSurge = 0;
-      const tips = 0;
-      const targetIncentive = 0;
+      const targetIncentive = count >= 5 ? 100 : 0;
+      const total = basePay + tips + targetIncentive;
       return {
-        total: basePay,
+        total,
         tripsCount: count,
         basePay,
         distanceSurge,

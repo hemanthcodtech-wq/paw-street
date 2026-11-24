@@ -13,14 +13,18 @@ export default function CheckoutScreen({ navigation }) {
 
   const [paymentMethod, setPaymentMethod] = useState('online'); // online | cod
   const [addressLine, setAddressLine] = useState('Flat 402, Green Valley Apts, Road 12');
+  const [tipAmount, setTipAmount] = useState(20); // 20 default friendly tip
   const [loading, setLoading] = useState(false);
+
+  const finalPayable = total + tipAmount;
 
   const handlePlaceOrder = () => {
     setLoading(true);
     setTimeout(() => {
       const order = placeOrder({
-        total,
+        total: finalPayable,
         deliveryFee,
+        tip: tipAmount,
         items: cartItems,
         deliveryAddress: `${addressLine}, ${selectedLocation.area}, ${selectedLocation.city}`,
         paymentMethod: paymentMethod === 'online' ? 'Prepaid (Razorpay / UPI)' : 'Cash on Delivery (COD)'
@@ -101,6 +105,37 @@ export default function CheckoutScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        {/* Delivery Captain Tip Section */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="heart" size={20} color="#EF4444" />
+            <Text style={styles.cardTitle}>Tip Your Delivery Captain</Text>
+          </View>
+          <Text style={styles.tipSubtitle}>
+            100% of your tip goes directly to your rider for fast 15-min flash delivery!
+          </Text>
+
+          <View style={styles.tipPillRow}>
+            {[
+              { label: 'No Tip', amount: 0 },
+              { label: '₹20 😊', amount: 20 },
+              { label: '₹30 ❤️', amount: 30 },
+              { label: '₹50 ⭐', amount: 50 }
+            ].map(pill => (
+              <TouchableOpacity
+                key={pill.amount}
+                style={[styles.tipPill, tipAmount === pill.amount && styles.tipPillActive]}
+                onPress={() => setTipAmount(pill.amount)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.tipPillText, tipAmount === pill.amount && styles.tipPillTextActive]}>
+                  {pill.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         {/* Order Summary */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Order Summary ({cartItems.length} items)</Text>
@@ -110,10 +145,20 @@ export default function CheckoutScreen({ navigation }) {
               <Text style={styles.summaryItemPrice}>₹{item.price * item.quantity}</Text>
             </View>
           ))}
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryItemText}>Delivery Fee</Text>
+            <Text style={styles.summaryItemPrice}>{deliveryFee === 0 ? 'FREE' : `₹${deliveryFee}`}</Text>
+          </View>
+          {tipAmount > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryItemText, { color: '#EF4444', fontWeight: '700' }]}>Rider Tip ❤️</Text>
+              <Text style={[styles.summaryItemPrice, { color: '#EF4444', fontWeight: '800' }]}>+₹{tipAmount}</Text>
+            </View>
+          )}
           <View style={styles.divider} />
           <View style={styles.summaryTotalRow}>
             <Text style={styles.summaryTotalLabel}>Final Amount</Text>
-            <Text style={styles.summaryTotalValue}>₹{total}</Text>
+            <Text style={styles.summaryTotalValue}>₹{finalPayable}</Text>
           </View>
         </View>
       </ScrollView>
@@ -122,7 +167,7 @@ export default function CheckoutScreen({ navigation }) {
       <View style={styles.bottomBar}>
         <View>
           <Text style={styles.amountLabel}>Total Payable</Text>
-          <Text style={styles.amountValue}>₹{total}</Text>
+          <Text style={styles.amountValue}>₹{finalPayable}</Text>
         </View>
         <TouchableOpacity
           style={styles.placeOrderBtn}
@@ -130,7 +175,7 @@ export default function CheckoutScreen({ navigation }) {
           disabled={loading}
         >
           <Text style={styles.placeOrderBtnText}>
-            {loading ? 'Processing...' : 'Place Order Now'}
+            {loading ? 'Processing...' : `Place Order (₹${finalPayable})`}
           </Text>
         </TouchableOpacity>
       </View>
@@ -299,6 +344,38 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 14,
     fontWeight: '800',
+  },
+  tipSubtitle: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginBottom: 10,
+  },
+  tipPillRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  tipPill: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tipPillActive: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#EF4444',
+  },
+  tipPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  tipPillTextActive: {
+    color: '#DC2626',
+    fontWeight: '900',
   },
 });
 

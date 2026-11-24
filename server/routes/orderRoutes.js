@@ -186,6 +186,7 @@ router.post('/', protect, async (req, res) => {
       vendorNetAmount: Math.max(0, vendorGrossAmount - platformCommission),
       commissionRate,
       riderPayoutAmount: Math.round(Number(order.pricing?.deliveryFee || 0) * 0.6),
+      riderTipAmount: Number(order.pricing?.tip || 0),
       riderPayoutRate: 0.6
     };
     await order.save();
