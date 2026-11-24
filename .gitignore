@@ -18,5 +18,8 @@ client/.env.development
 *.log
 *.pem
 *.jks
+*.csv
+*.zip
+image*.png
 .expo/
 ~/
