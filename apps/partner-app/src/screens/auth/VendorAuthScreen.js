@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Linking, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 import { usePartnerAuth } from '../../context/PartnerAuthContext';
 import { colors } from '../../theme/colors';
 import SafeScreen from '../../components/SafeScreen';
 import { geocodeAddress, reverseGeocodeCoords, HYDERABAD_HUBS } from '../../services/geocoding';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function VendorAuthScreen({ navigation }) {
   const { switchRole, loginPartner, registerPartner, loginPartnerWithTokenAndUser } = usePartnerAuth();
@@ -43,65 +46,76 @@ export default function VendorAuthScreen({ navigation }) {
   });
   const [detectingGps, setDetectingGps] = useState(false);
 
+  const handleAuthUrl = useCallback((url) => {
+    if (!url) return;
+
+    try {
+      const parsed = new URL(url);
+      const status = parsed.searchParams.get('status');
+      const token = parsed.searchParams.get('token');
+      const userJson = parsed.searchParams.get('user');
+      const googleEmail = parsed.searchParams.get('email');
+      const googleName = parsed.searchParams.get('name');
+      const message = parsed.searchParams.get('message');
+
+      if (status === 'success' && token && userJson) {
+        const userData = JSON.parse(decodeURIComponent(userJson));
+        loginPartnerWithTokenAndUser(token, userData, 'vendor');
+        navigation.replace('MainTabs');
+      } else if (status === 'not_registered') {
+        Alert.alert(
+          'Vendor Account Not Found',
+          `No registered vendor account found for ${googleEmail || 'this email'}. Please complete store onboarding below.`
+        );
+        setMode('signup');
+        setFormData((prev) => ({
+          ...prev,
+          email: googleEmail || prev.email,
+          fullName: googleName || prev.fullName,
+        }));
+      } else if (status === 'error') {
+        Alert.alert('Sign In Error', message || 'Google sign-in was cancelled.');
+      }
+    } catch (err) {
+      console.warn('Deep link parse error:', err);
+    }
+  }, [navigation, loginPartnerWithTokenAndUser]);
+
   // Deep link listener for Google Auth Bridge
   useEffect(() => {
-    const handleUrl = (event) => {
+    const handleUrlEvent = (event) => {
       const url = event?.url || event;
-      if (!url) return;
-
-      try {
-        const parsed = new URL(url);
-        const status = parsed.searchParams.get('status');
-        const token = parsed.searchParams.get('token');
-        const userJson = parsed.searchParams.get('user');
-        const googleEmail = parsed.searchParams.get('email');
-        const googleName = parsed.searchParams.get('name');
-        const message = parsed.searchParams.get('message');
-
-        if (status === 'success' && token && userJson) {
-          const userData = JSON.parse(decodeURIComponent(userJson));
-          loginPartnerWithTokenAndUser(token, userData, 'vendor');
-          navigation.replace('MainTabs');
-        } else if (status === 'not_registered') {
-          Alert.alert(
-            'Vendor Account Not Found',
-            `No registered vendor account found for ${googleEmail || 'this email'}. Please complete store onboarding below.`
-          );
-          setMode('signup');
-          setFormData((prev) => ({
-            ...prev,
-            email: googleEmail || prev.email,
-            fullName: googleName || prev.fullName,
-          }));
-        } else if (status === 'error') {
-          Alert.alert('Sign In Error', message || 'Google sign-in was cancelled.');
-        }
-      } catch (err) {
-        console.warn('Deep link parse error:', err);
-      }
+      if (url) handleAuthUrl(url);
     };
 
-    const sub = Linking.addEventListener('url', handleUrl);
+    const sub = Linking.addEventListener('url', handleUrlEvent);
     Linking.getInitialURL().then((initUrl) => {
-      if (initUrl) handleUrl(initUrl);
+      if (initUrl) handleAuthUrl(initUrl);
     });
 
     return () => {
       if (sub && typeof sub.remove === 'function') sub.remove();
     };
-  }, [navigation, loginPartnerWithTokenAndUser]);
+  }, [handleAuthUrl]);
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      const authUrl = 'https://pawnear.in/api/auth/google/start?app=partner&role=vendor';
+      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://pawsnear.com/api';
+      const authUrl = `${baseUrl}/auth/google/start?app=partner&role=vendor`;
+
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         window.location.href = authUrl;
-      } else {
-        await Linking.openURL(authUrl);
+        return;
+      }
+
+      // In-app authentication session using Custom Tabs - never navigates out of app
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, 'pawnearpartner://auth');
+      if (result.type === 'success' && result.url) {
+        handleAuthUrl(result.url);
       }
     } catch (e) {
-      Alert.alert('Google Sign-In Error', e.message || 'Unable to open Google sign in.');
+      Alert.alert('Google Sign-In Error', e.message || 'Unable to complete in-app Google sign in.');
     } finally {
       setLoading(false);
     }

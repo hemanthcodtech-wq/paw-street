@@ -309,7 +309,7 @@ router.post('/verify-otp', async (req, res) => {
 // Helper to handle Auth Bridge redirects for mobile apps and web
 const redirectWithBridge = (res, appTarget, params) => {
   const queryString = new URLSearchParams(params).toString();
-  const clientUrl = process.env.CLIENT_URL || 'https://pawnear.in';
+  const clientUrl = process.env.CLIENT_URL || 'https://pawsnear.com';
 
   if (appTarget === 'user') {
     const deepLink = `pawnearuser://auth?${queryString}`;

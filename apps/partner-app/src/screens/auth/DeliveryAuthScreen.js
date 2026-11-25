@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Linking, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 import { usePartnerAuth } from '../../context/PartnerAuthContext';
 import { colors } from '../../theme/colors';
 import SafeScreen from '../../components/SafeScreen';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function DeliveryAuthScreen({ navigation }) {
   const { switchRole, loginPartner, loginPartnerWithTokenAndUser } = usePartnerAuth();
@@ -13,65 +16,76 @@ export default function DeliveryAuthScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Deep Link listener for Google Auth Bridge
-  useEffect(() => {
-    const handleUrl = (event) => {
-      const url = event?.url || event;
-      if (!url) return;
+  const handleAuthUrl = useCallback((url) => {
+    if (!url) return;
 
-      try {
-        const parsed = new URL(url);
-        const status = parsed.searchParams.get('status');
-        const token = parsed.searchParams.get('token');
-        const userJson = parsed.searchParams.get('user');
-        const googleEmail = parsed.searchParams.get('email');
-        const googleName = parsed.searchParams.get('name');
-        const message = parsed.searchParams.get('message');
+    try {
+      const parsed = new URL(url);
+      const status = parsed.searchParams.get('status');
+      const token = parsed.searchParams.get('token');
+      const userJson = parsed.searchParams.get('user');
+      const googleEmail = parsed.searchParams.get('email');
+      const googleName = parsed.searchParams.get('name');
+      const message = parsed.searchParams.get('message');
 
-        if (status === 'success' && token && userJson) {
-          const userData = JSON.parse(decodeURIComponent(userJson));
-          loginPartnerWithTokenAndUser(token, userData, 'delivery');
-          navigation.replace('MainTabs');
-        } else if (status === 'not_registered') {
-          Alert.alert(
-            'Rider Account Not Found',
-            `No registered delivery account found for ${googleEmail || 'this email'}. Please complete registration below to join the fleet.`
-          );
-          setMode('signup');
-          setRiderForm((prev) => ({
-            ...prev,
-            email: googleEmail || prev.email,
-            name: googleName || prev.name,
-          }));
-        } else if (status === 'error') {
-          Alert.alert('Sign In Error', message || 'Google sign-in was cancelled.');
-        }
-      } catch (err) {
-        console.warn('Deep link parse error:', err);
+      if (status === 'success' && token && userJson) {
+        const userData = JSON.parse(decodeURIComponent(userJson));
+        loginPartnerWithTokenAndUser(token, userData, 'delivery');
+        navigation.replace('MainTabs');
+      } else if (status === 'not_registered') {
+        Alert.alert(
+          'Rider Account Not Found',
+          `No registered delivery account found for ${googleEmail || 'this email'}. Please complete registration below to join the fleet.`
+        );
+        setMode('signup');
+        setRiderForm((prev) => ({
+          ...prev,
+          email: googleEmail || prev.email,
+          name: googleName || prev.name,
+        }));
+      } else if (status === 'error') {
+        Alert.alert('Sign In Error', message || 'Google sign-in was cancelled.');
       }
+    } catch (err) {
+      console.warn('Deep link parse error:', err);
+    }
+  }, [navigation, loginPartnerWithTokenAndUser]);
+
+  // Deep Link listener for Google Auth Bridge fallback
+  useEffect(() => {
+    const handleUrlEvent = (event) => {
+      const url = event?.url || event;
+      if (url) handleAuthUrl(url);
     };
 
-    const sub = Linking.addEventListener('url', handleUrl);
+    const sub = Linking.addEventListener('url', handleUrlEvent);
     Linking.getInitialURL().then((initUrl) => {
-      if (initUrl) handleUrl(initUrl);
+      if (initUrl) handleAuthUrl(initUrl);
     });
 
     return () => {
       if (sub && typeof sub.remove === 'function') sub.remove();
     };
-  }, [navigation, loginPartnerWithTokenAndUser]);
+  }, [handleAuthUrl]);
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      const authUrl = 'https://pawnear.in/api/auth/google/start?app=partner&role=delivery';
+      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://pawsnear.com/api';
+      const authUrl = `${baseUrl}/auth/google/start?app=partner&role=delivery`;
+
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         window.location.href = authUrl;
-      } else {
-        await Linking.openURL(authUrl);
+        return;
+      }
+
+      // Native In-App Web Browser Sheet (Custom Tabs)
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, 'pawnearpartner://auth');
+      if (result.type === 'success' && result.url) {
+        handleAuthUrl(result.url);
       }
     } catch (e) {
-      Alert.alert('Google Sign-In Error', e.message || 'Unable to open Google sign in.');
+      Alert.alert('Google Sign-In Error', e.message || 'Unable to complete in-app Google sign in.');
     } finally {
       setLoading(false);
     }
