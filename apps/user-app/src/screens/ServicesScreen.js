@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Modal, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Modal, Alert, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SERVICES } from '../data/mockData';
 import { colors } from '../theme/colors';
 import SafeScreen from '../components/SafeScreen';
@@ -9,6 +10,7 @@ import LostPetSOSModal from '../components/LostPetSOSModal';
 import PetRelocationModal from '../components/PetRelocationModal';
 
 export default function ServicesScreen() {
+  const insets = useSafeAreaInsets();
   const [selectedService, setSelectedService] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'van' | 'relocation' | 'lostpet'
@@ -110,7 +112,7 @@ export default function ServicesScreen() {
         <FlatList
           data={SERVICES}
           keyExtractor={item => item.id}
-          contentContainerStyle={styles.listContainer}
+          contentContainerStyle={[styles.listContainer, { paddingBottom: 110 }]}
           renderItem={({ item }) => (
             <View style={styles.serviceCard}>
               <Image source={{ uri: item.image }} style={styles.serviceImage} />
@@ -143,7 +145,7 @@ export default function ServicesScreen() {
       {/* Booking Confirmation Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <View style={[styles.modalCard, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
             <Text style={styles.modalTitle}>Confirm Pet Service</Text>
             {selectedService && (
               <>

@@ -30,7 +30,7 @@ function CustomBottomTabBar({ state, descriptors, navigation }) {
   const { totalItemCount } = useCart();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === 'web';
-  const bottomPadding = insets.bottom > 0 ? insets.bottom : (isWeb ? 8 : (Platform.OS === 'android' ? 10 : 8));
+  const bottomPadding = Math.max(insets.bottom, isWeb ? 8 : (Platform.OS === 'android' ? 16 : 10)) + (insets.bottom > 0 ? 4 : 8);
 
   return (
     <View style={styles.customTabBarContainer}>

@@ -10,6 +10,7 @@ import {
   Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
 
 const SUBSCRIPTION_PLANS = [
@@ -69,6 +70,7 @@ const SUBSCRIPTION_PLANS = [
 ];
 
 export default function VendorSubscriptionModal({ visible, onClose, activePlan = 'starter', onPlanUpdated }) {
+  const insets = useSafeAreaInsets();
   const [currentPlan, setCurrentPlan] = useState(activePlan);
   const [selectedPlan, setSelectedPlan] = useState('pro');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -90,7 +92,7 @@ export default function VendorSubscriptionModal({ visible, onClose, activePlan =
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, { paddingBottom: Math.max(insets.bottom, 16) + 14 }]}>
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>

@@ -37,16 +37,16 @@ export default function StoresScreen({ navigation }) {
       <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <View>
+          <View style={styles.headerTitleWrap}>
             <Text style={styles.headerTitle}>Local Pet Stores</Text>
-            <Text style={styles.headerSubtitle}>Verified neighbourhood shops with 15-minute delivery</Text>
+            <Text style={styles.headerSubtitle} numberOfLines={1}>Verified shops • 15-min delivery</Text>
           </View>
           <TouchableOpacity
             style={styles.changeLocBtn}
             onPress={openLocationModal}
             activeOpacity={0.8}
           >
-            <Ionicons name="location" size={14} color="#D97706" />
+            <Ionicons name="location" size={13} color="#D97706" />
             <Text style={styles.changeLocBtnText}>Change Pin</Text>
           </TouchableOpacity>
         </View>
@@ -56,7 +56,7 @@ export default function StoresScreen({ navigation }) {
           <View style={styles.locIndicator}>
             <Ionicons name="pin" size={12} color="#059669" />
             <Text style={styles.locIndicatorText} numberOfLines={1}>
-              Near: {selectedLocation?.area || 'Banjara Hills'}, {selectedLocation?.city || 'Hyderabad'}
+              Near: {selectedLocation?.area || 'Banjara Hills'}
             </Text>
           </View>
 
@@ -67,11 +67,11 @@ export default function StoresScreen({ navigation }) {
           >
             <Ionicons
               name={filterNearbyOnly ? 'radio-button-on' : 'radio-button-off'}
-              size={14}
+              size={13}
               color={filterNearbyOnly ? '#FFF' : '#D97706'}
             />
             <Text style={[styles.nearbyFilterToggleText, filterNearbyOnly && styles.nearbyFilterToggleTextActive]}>
-              {filterNearbyOnly ? 'Nearby Only (<5km)' : 'Sort: Nearest First'}
+              {filterNearbyOnly ? 'Nearby (<5km)' : 'Sort: Nearest'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -80,7 +80,7 @@ export default function StoresScreen({ navigation }) {
       <FlatList
         data={displayStores}
         keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={[styles.listContainer, { paddingBottom: 110 }]}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.storeCard}
@@ -147,7 +147,11 @@ const styles = StyleSheet.create({
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerTitleWrap: {
+    flex: 1,
   },
   changeLocBtn: {
     flexDirection: 'row',
@@ -159,7 +163,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 8,
-    marginTop: 2,
+    flexShrink: 0,
   },
   changeLocBtnText: {
     fontSize: 11,

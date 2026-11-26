@@ -110,6 +110,13 @@ export function AuthProvider({ children }) {
     await AsyncStorage.setItem('paw_user_profile', JSON.stringify(updatedUser));
   };
 
+  const updateUserProfile = async (updatedFields) => {
+    const updatedUser = { ...(user || {}), ...updatedFields };
+    setUser(updatedUser);
+    await AsyncStorage.setItem('paw_user_profile', JSON.stringify(updatedUser));
+    return { success: true, user: updatedUser };
+  };
+
   const updateLocation = (loc) => {
     setSelectedLocation(loc);
     setHasPinnedLocation(true);
@@ -132,6 +139,7 @@ export function AuthProvider({ children }) {
         isLoggedIn,
         pets,
         addPet,
+        updateUserProfile,
         selectedLocation,
         updateLocation,
         hasPinnedLocation,

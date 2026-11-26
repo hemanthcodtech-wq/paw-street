@@ -11,6 +11,7 @@ import {
   Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 
 const DOMESTIC_ROUTES = [
@@ -32,6 +33,7 @@ const INTERNATIONAL_DESTINATIONS = [
 ];
 
 export default function PetRelocationModal({ visible, onClose }) {
+  const insets = useSafeAreaInsets();
   const [relocationType, setRelocationType] = useState('domestic'); // 'domestic' | 'international'
   const [transportMode, setTransportMode] = useState('flight'); // 'flight' | 'cab'
   const [originCity, setOriginCity] = useState('Hyderabad');
@@ -77,7 +79,7 @@ export default function PetRelocationModal({ visible, onClose }) {
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, { paddingBottom: Math.max(insets.bottom, 16) + 14 }]}>
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>

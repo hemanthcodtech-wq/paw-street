@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useOrder } from '../context/OrderContext';
 import { colors } from '../theme/colors';
 
 export default function CheckoutScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { cartItems, total, deliveryFee, clearCart } = useCart();
   const { selectedLocation, user } = useAuth();
   const { placeOrder } = useOrder();
@@ -37,7 +39,7 @@ export default function CheckoutScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: 110 + Math.max(insets.bottom, 12) }]}>
         {/* Delivery Address Card */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -164,7 +166,7 @@ export default function CheckoutScreen({ navigation }) {
       </ScrollView>
 
       {/* Place Order CTA */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}>
         <View>
           <Text style={styles.amountLabel}>Total Payable</Text>
           <Text style={styles.amountValue}>₹{finalPayable}</Text>

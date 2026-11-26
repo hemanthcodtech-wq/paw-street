@@ -11,6 +11,7 @@ import {
   Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 
 const SAMPLE_LOST_PETS = [
@@ -41,6 +42,7 @@ const SAMPLE_LOST_PETS = [
 ];
 
 export default function LostPetSOSModal({ visible, onClose, selectedLocation }) {
+  const insets = useSafeAreaInsets();
   const [mode, setMode] = useState('browse'); // 'browse' | 'report'
   const [petName, setPetName] = useState('');
   const [breed, setBreed] = useState('');
@@ -64,7 +66,7 @@ export default function LostPetSOSModal({ visible, onClose, selectedLocation }) 
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.modalBox}>
+        <View style={[styles.modalBox, { paddingBottom: Math.max(insets.bottom, 16) + 14 }]}>
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>
@@ -101,7 +103,7 @@ export default function LostPetSOSModal({ visible, onClose, selectedLocation }) 
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+          <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
             {mode === 'browse' ? (
               <>
                 <View style={styles.infoBanner}>

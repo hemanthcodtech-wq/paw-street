@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Switch, Modal, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Switch, Modal, TextInput, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useVendor } from '../../context/VendorContext';
 import { colors } from '../../theme/colors';
 
 export default function VendorProductsScreen() {
+  const insets = useSafeAreaInsets();
   const { products, toggleStock, addProduct } = useVendor();
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -81,7 +83,7 @@ export default function VendorProductsScreen() {
       {/* Add Product Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
             <Text style={styles.modalTitle}>Add New Pet Product 📦</Text>
 
             <Text style={styles.inputLabel}>Product Title</Text>

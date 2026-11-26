@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, Modal, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useOrder } from '../context/OrderContext';
 import { colors } from '../theme/colors';
 import SafeScreen from '../components/SafeScreen';
 
 export default function AccountScreen({ navigation }) {
-  const { user, isLoggedIn, logout, pets, addPet } = useAuth();
+  const insets = useSafeAreaInsets();
+  const { user, isLoggedIn, logout, pets, addPet, updateUserProfile } = useAuth();
   const { orders } = useOrder();
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -16,9 +18,38 @@ export default function AccountScreen({ navigation }) {
   const [breed, setBreed] = useState('');
   const [age, setAge] = useState('');
 
+  // Edit Profile state
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editName, setEditName] = useState(user?.name || '');
+  const [editEmail, setEditEmail] = useState(user?.email || '');
+  const [editPhone, setEditPhone] = useState(user?.phone || '');
+  const [saveSuccessNotice, setSaveSuccessNotice] = useState(false);
+
+  const openEditProfile = () => {
+    setEditName(user?.name || 'Pet Parent');
+    setEditEmail(user?.email || 'customer@thepawstreet.com');
+    setEditPhone(user?.phone || '+91 98450 11223');
+    setEditModalVisible(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) {
+      return;
+    }
+    if (updateUserProfile) {
+      await updateUserProfile({
+        name: editName.trim(),
+        email: editEmail.trim(),
+        phone: editPhone.trim()
+      });
+    }
+    setEditModalVisible(false);
+    setSaveSuccessNotice(true);
+    setTimeout(() => setSaveSuccessNotice(false), 2500);
+  };
+
   const handleSavePet = () => {
     if (!petName.trim()) {
-      Alert.alert('Required', 'Please enter your pet name');
       return;
     }
     addPet({
@@ -37,7 +68,11 @@ export default function AccountScreen({ navigation }) {
 
   return (
     <SafeScreen backgroundColor={colors.background}>
-      <ScrollView style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{ paddingBottom: 110 + insets.bottom }}
+        showsVerticalScrollIndicator={false}
+      >
       {/* Profile Header */}
       <View style={styles.profileHeader}>
         <Image
@@ -48,10 +83,17 @@ export default function AccountScreen({ navigation }) {
           <Text style={styles.userName}>{user?.name || 'Pet Parent'}</Text>
           <Text style={styles.userEmail}>{user?.email || 'customer@thepawstreet.com'}</Text>
           <Text style={styles.userPhone}>{user?.phone || '+91 98450 11223'}</Text>
+          {saveSuccessNotice && (
+            <View style={styles.savedPill}>
+              <Ionicons name="checkmark-circle" size={12} color="#15803D" />
+              <Text style={styles.savedPillText}>Profile updated!</Text>
+            </View>
+          )}
         </View>
         <TouchableOpacity
           style={styles.editBtn}
-          onPress={() => Alert.alert('Profile', 'Profile edit features available in next release')}
+          onPress={openEditProfile}
+          activeOpacity={0.8}
         >
           <Ionicons name="pencil" size={16} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -197,6 +239,73 @@ export default function AccountScreen({ navigation }) {
                 onPress={handleSavePet}
               >
                 <Text style={styles.modalSaveText}>Save Pet</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit Profile Modal */}
+      <Modal visible={editModalVisible} transparent animationType="slide" onRequestClose={() => setEditModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
+            <View style={styles.editModalHeaderRow}>
+              <View style={styles.editModalIconCircle}>
+                <Ionicons name="person" size={20} color="#0F172A" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Edit Profile ✏️</Text>
+                <Text style={styles.modalSubtitle}>Update your personal details for orders & bookings</Text>
+              </View>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)} style={styles.closeModalBtn}>
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.inputLabel}>Full Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Your full name"
+              placeholderTextColor={colors.textMuted}
+              value={editName}
+              onChangeText={setEditName}
+            />
+
+            <Text style={styles.inputLabel}>Email Address</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="email@example.com"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={editEmail}
+              onChangeText={setEditEmail}
+            />
+
+            <Text style={styles.inputLabel}>Phone Number</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="+91 98450 11223"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="phone-pad"
+              value={editPhone}
+              onChangeText={setEditPhone}
+            />
+
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => setEditModalVisible(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalSave}
+                onPress={handleSaveProfile}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.modalSaveText}>Save Profile</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -473,6 +582,44 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: '#FFF',
+  },
+  savedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  savedPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#15803D',
+  },
+  editModalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 14,
+  },
+  editModalIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  closeModalBtn: {
+    padding: 6,
   },
 });
 

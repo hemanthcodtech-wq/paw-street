@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import SafeScreen from '../components/SafeScreen';
 
 export default function ChatBotScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState([
     {
       id: '1',
@@ -101,7 +103,7 @@ export default function ChatBotScreen({ navigation }) {
       </View>
 
       {/* Input Bar */}
-      <View style={styles.inputBar}>
+      <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 10) + 8 }]}>
         <TextInput
           style={styles.input}
           placeholder="Type your pet care question..."

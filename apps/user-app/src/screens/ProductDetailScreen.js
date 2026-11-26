@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCart } from '../context/CartContext';
 import { colors } from '../theme/colors';
 import SafeScreen from '../components/SafeScreen';
 
 export default function ProductDetailScreen({ route, navigation }) {
+  const insets = useSafeAreaInsets();
   const { product } = route.params;
   const { addToCart } = useCart();
   const [qty, setQty] = useState(1);
@@ -92,7 +94,7 @@ export default function ProductDetailScreen({ route, navigation }) {
       </ScrollView>
 
       {/* Sticky Bottom Bar */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}>
         <View style={styles.qtySelector}>
           <TouchableOpacity
             style={styles.qtyBtn}
@@ -130,7 +132,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
   header: {
     flexDirection: 'row',

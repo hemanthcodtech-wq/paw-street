@@ -11,6 +11,7 @@ import {
   Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 
 const VAN_PACKAGES = [
@@ -54,6 +55,7 @@ const TIME_SLOTS = [
 ];
 
 export default function PetVanModal({ visible, onClose, selectedLocation }) {
+  const insets = useSafeAreaInsets();
   const [selectedPkg, setSelectedPkg] = useState(VAN_PACKAGES[0]);
   const [selectedDate, setSelectedDate] = useState('Tomorrow');
   const [selectedSlot, setSelectedSlot] = useState(TIME_SLOTS[0]);
@@ -85,7 +87,7 @@ export default function PetVanModal({ visible, onClose, selectedLocation }) {
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.modalBox}>
+        <View style={[styles.modalBox, { paddingBottom: Math.max(insets.bottom, 16) + 14 }]}>
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>
@@ -102,7 +104,7 @@ export default function PetVanModal({ visible, onClose, selectedLocation }) {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+          <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
             {bookingConfirmed && activeBooking ? (
               <View style={styles.successCard}>
                 <View style={styles.successIconWrap}>

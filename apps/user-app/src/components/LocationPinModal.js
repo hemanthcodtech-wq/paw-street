@@ -12,6 +12,7 @@ import {
   Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -22,6 +23,7 @@ import {
 } from '../services/geocoding';
 
 export default function LocationPinModal({ visible, onClose }) {
+  const insets = useSafeAreaInsets();
   const { selectedLocation, updateLocation } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [detecting, setDetecting] = useState(false);
@@ -141,7 +143,7 @@ export default function LocationPinModal({ visible, onClose }) {
       onRequestClose={handleConfirm}
     >
       <View style={styles.overlay}>
-        <View style={styles.modalBox}>
+        <View style={[styles.modalBox, { paddingBottom: Math.max(insets.bottom, 16) + 14 }]}>
           {/* Header */}
           <View style={styles.headerRow}>
             <View style={styles.headerTitleWrap}>
@@ -157,7 +159,7 @@ export default function LocationPinModal({ visible, onClose }) {
             </View>
           </View>
 
-          <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <ScrollView style={styles.scrollContent} contentContainerStyle={{ paddingBottom: 16 }} showsVerticalScrollIndicator={false}>
             {/* GPS 1-Tap Auto Detect */}
             <TouchableOpacity
               style={styles.gpsButton}
